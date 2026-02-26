@@ -1,0 +1,48 @@
+test accuracy = tensor(88.8333, device='cuda:0')
+fruit = tomato
+layer = 5_point
+test accuracy = tensor(97.6667, device='cuda:0')
+fruit = tomato
+layer = 6_point
+test accuracy = tensor(98.6667, device='cuda:0')
+fruit = tomato
+layer = 7_point
+test accuracy = tensor(97.1667, device='cuda:0')
+fruit = tomato
+layer = 8_point
+test accuracy = tensor(91., device='cuda:0')
+fruit = tomato
+layer = 5_point
+test accuracy = tensor(97.5000, device='cuda:0')
+fruit = tomato
+layer = 6_point
+test accuracy = tensor(98.5000, device='cuda:0')
+fruit = tomato
+layer = 7_point
+test accuracy = tensor(98.3333, device='cuda:0')
+fruit = tomato
+layer = 8_point
+test accuracy = tensor(89., device='cuda:0')
+fruit = tomato
+layer = 5_point
+test accuracy = tensor(97.6667, device='cuda:0')
+fruit = tomato
+layer = 6_point
+test accuracy = tensor(98.5000, device='cuda:0')
+fruit = tomato
+layer = 7_point
+test accuracy = tensor(97.5000, device='cuda:0')
+fruit = tomato
+layer = 8_point
+test accuracy = tensor(88.5000, device='cuda:0')
+fruit = tomato
+layer = 5_point
+test accuracy = tensor(97., device='cuda:0')
+fruit = tomato
+layer = 6_point
+test accuracy = tensor(98.6667, device='cuda:0')
+fruit = tomato
+layer = 7_point
+test accuracy = tensor(97.5000, device='cuda:0')
+fruit = tomato
+layer = 8_point

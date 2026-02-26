@@ -1,0 +1,57 @@
+
+fruit = apple
+layer = 5_point
+test accuracy = tensor(59.5000, device='cuda:0')
+fruit = apple
+layer = 6_point
+test accuracy = tensor(77.5000, device='cuda:0')
+fruit = apple
+layer = 7_point
+test accuracy = tensor(84.1667, device='cuda:0')
+fruit = apple
+layer = 8_point
+fruit = apple
+layer = 8_point
+test accuracy = tensor(94.8333, device='cuda:0')
+fruit = muskmelon
+layer = 5_point
+test accuracy = tensor(64., device='cuda:0')
+fruit = muskmelon
+layer = 6_point
+test accuracy = tensor(83.6667, device='cuda:0')
+fruit = muskmelon
+layer = 7_point
+test accuracy = tensor(73., device='cuda:0')
+fruit = muskmelon
+layer = 8_point
+fruit = muskmelon
+layer = 8_point
+test accuracy = tensor(96.5000, device='cuda:0')
+fruit = apple
+layer = 5_point
+test accuracy = tensor(61.8333, device='cuda:0')
+fruit = apple
+layer = 6_point
+test accuracy = tensor(75.8333, device='cuda:0')
+fruit = apple
+layer = 7_point
+test accuracy = tensor(85.8333, device='cuda:0')
+fruit = apple
+layer = 8_point
+fruit = apple
+layer = 8_point
+test accuracy = tensor(95.3333, device='cuda:0')
+fruit = muskmelon
+layer = 5_point
+test accuracy = tensor(67.5000, device='cuda:0')
+fruit = muskmelon
+layer = 6_point
+test accuracy = tensor(83.1667, device='cuda:0')
+fruit = muskmelon
+layer = 7_point
+test accuracy = tensor(71.6667, device='cuda:0')
+fruit = muskmelon
+layer = 8_point
+fruit = muskmelon
+layer = 8_point
+test accuracy = tensor(96., device='cuda:0')

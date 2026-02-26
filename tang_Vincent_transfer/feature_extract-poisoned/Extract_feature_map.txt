@@ -1,0 +1,511 @@
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "apple" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "banana" 
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "banana" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "carambola" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "guava" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "muskmelon" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "pear" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "peach" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "5_point" --source_fruit "tomato" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "apple" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "banana" 
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "banana" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "carambola" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "guava" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "muskmelon" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "pear" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "peach" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "6_point" --source_fruit "tomato" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "apple" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "banana" 
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "banana" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "carambola" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "guava" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "muskmelon" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "pear" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "peach" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "7_point" --source_fruit "tomato" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "apple" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "banana" 
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "banana" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "carambola" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "guava" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "muskmelon" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "pear" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "peach" --target_fruit "tomato"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "apple"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "banana"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "carambola"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "guava"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "muskmelon"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "pear"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "peach"
+
+python Extract_feature_map1.py --extracted_layer "8_point" --source_fruit "tomato" --target_fruit "tomato"

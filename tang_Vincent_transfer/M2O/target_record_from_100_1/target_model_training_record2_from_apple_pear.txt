@@ -1,0 +1,29 @@
+
+fruit = carambola
+layer = 5_point
+test accuracy = tensor(98.1667, device='cuda:0')
+fruit = carambola
+layer = 6_point
+test accuracy = tensor(99.5000, device='cuda:0')
+fruit = carambola
+layer = 7_point
+test accuracy = tensor(99.5000, device='cuda:0')
+fruit = carambola
+layer = 8_point
+fruit = carambola
+layer = 8_point
+test accuracy = tensor(98.6667, device='cuda:0')
+fruit = pear
+layer = 5_point
+test accuracy = tensor(84., device='cuda:1')
+fruit = pear
+layer = 6_point
+test accuracy = tensor(75.3333, device='cuda:1')
+fruit = pear
+layer = 7_point
+test accuracy = tensor(93.8333, device='cuda:1')
+fruit = pear
+layer = 8_point
+fruit = pear
+layer = 8_point
+test accuracy = tensor(87.5000, device='cuda:1')

@@ -1,0 +1,61 @@
+
+fruit = apple
+layer = 5_point
+test accuracy = tensor(59.6667, device='cuda:0')
+test accuracy = tensor(89., device='cuda:0')
+test accuracy = tensor(85.8333, device='cuda:0')
+test accuracy = tensor(89., device='cuda:0')
+test accuracy = tensor(84.1667, device='cuda:0')
+fruit = apple
+layer = 6_point
+test accuracy = tensor(75.6667, device='cuda:0')
+test accuracy = tensor(87.5000, device='cuda:0')
+test accuracy = tensor(92., device='cuda:0')
+test accuracy = tensor(96., device='cuda:0')
+test accuracy = tensor(95., device='cuda:0')
+fruit = apple
+layer = 7_point
+test accuracy = tensor(84.6667, device='cuda:0')
+test accuracy = tensor(94.8333, device='cuda:0')
+test accuracy = tensor(90., device='cuda:0')
+test accuracy = tensor(96.5000, device='cuda:0')
+test accuracy = tensor(96., device='cuda:0')
+fruit = apple
+layer = 8_point
+fruit = apple
+layer = 8_point
+test accuracy = tensor(95.5000, device='cuda:0')
+test accuracy = tensor(77.6667, device='cuda:0')
+test accuracy = tensor(97.6667, device='cuda:0')
+test accuracy = tensor(95., device='cuda:0')
+test accuracy = tensor(83., device='cuda:0')
+fruit = muskmelon
+layer = 5_point
+test accuracy = tensor(67.1667, device='cuda:0')
+test accuracy = tensor(91.1667, device='cuda:0')
+test accuracy = tensor(86.1667, device='cuda:0')
+test accuracy = tensor(94.3333, device='cuda:0')
+test accuracy = tensor(97.8333, device='cuda:0')
+fruit = muskmelon
+layer = 6_point
+test accuracy = tensor(83.8333, device='cuda:0')
+test accuracy = tensor(97., device='cuda:0')
+test accuracy = tensor(94.5000, device='cuda:0')
+test accuracy = tensor(95.6667, device='cuda:0')
+test accuracy = tensor(99.1667, device='cuda:0')
+fruit = muskmelon
+layer = 7_point
+test accuracy = tensor(69.8333, device='cuda:0')
+test accuracy = tensor(96.5000, device='cuda:0')
+test accuracy = tensor(91.1667, device='cuda:0')
+test accuracy = tensor(96., device='cuda:0')
+test accuracy = tensor(97., device='cuda:0')
+fruit = muskmelon
+layer = 8_point
+fruit = muskmelon
+layer = 8_point
+test accuracy = tensor(94.3333, device='cuda:0')
+test accuracy = tensor(98., device='cuda:0')
+test accuracy = tensor(82.1667, device='cuda:0')
+test accuracy = tensor(99.1667, device='cuda:0')
+test accuracy = tensor(99., device='cuda:0')
