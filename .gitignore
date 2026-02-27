@@ -1,0 +1,4 @@
+CIFAR-10/
+BackdoorBox-badnets,refool/
+__pycache__/
+*.py[cod]

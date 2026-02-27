@@ -1,5 +1,6 @@
 # === Example commands（一次跑 attack + clean 兩套特徵）===
 # Source：父目錄為 train_source，底下有 badnets / clean 等子資料夾（各含 CIFAR-10 0~9）
+# 單一攻擊（舊行為，相容）
 # python Extract_feature_map_v2.py \
 #   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_source" \
 #   --attack_dir badnets \
@@ -11,13 +12,25 @@
 #   --extracted_layer 7_point \
 #   --pooling none
 #
-# Target：父目錄為 train_target，同樣指定 attack_dir / clean_dir
+# 多個攻擊（例如 badnets + refool）
 # python Extract_feature_map_v2.py \
-#   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_target" \
-#   --attack_dir badnets \
+#   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_source" \
+#   --attack_dirs badnets refool \
 #   --clean_dir clean \
 #   --output_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_" \
-#   --split_name Target_train_badnets_clean \
+#   --split_name Source_train_multiAttack_clean \
+#   --samples_per_class 100 \
+#   --min_class_policy oversample \
+#   --extracted_layer 7_point \
+#   --pooling none
+#
+# Target：父目錄為 train_target，同樣指定 attack_dir(s) / clean_dir
+# python Extract_feature_map_v2.py \
+#   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_target" \
+#   --attack_dirs badnets refool \
+#   --clean_dir clean \
+#   --output_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_" \
+#   --split_name Target_train_multiAttack_clean \
 #   --samples_per_class 20 \
 #   --min_class_policy oversample \
 #   --extracted_layer 7_point \
@@ -434,14 +447,28 @@ def extract_features(args):
     if args.device == "cuda" and torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
 
-    # input_root 為 parent，底下有 attack_dir 與 clean_dir
+    # input_root 為 parent，底下有多個攻擊資料夾與一個 clean_dir
     input_root_abs = os.path.abspath(args.input_root)
-    attack_root = os.path.join(input_root_abs, args.attack_dir)
-    clean_root = os.path.join(input_root_abs, args.clean_dir)
 
-    for label, path in [("attack", attack_root), ("clean", clean_root)]:
-        if not os.path.isdir(path):
-            raise ValueError(f"Expected directory not found: {path} (for {label})")
+    # 建立攻擊資料夾名稱清單：
+    # - 若提供 --attack_dirs（多攻擊模式），使用其中的名稱
+    # - 否則退回單一 --attack_dir
+    if getattr(args, "attack_dirs", None):
+        attack_names = list(dict.fromkeys(args.attack_dirs))  # 去除重複並保留順序
+    else:
+        attack_names = [args.attack_dir]
+
+    # 檢查所有攻擊與乾淨資料夾是否存在
+    clean_root = os.path.join(input_root_abs, args.clean_dir)
+    if not os.path.isdir(clean_root):
+        raise ValueError(f"Expected directory not found: {clean_root} (for clean)")
+
+    attack_roots = []
+    for attack_name in attack_names:
+        attack_root = os.path.join(input_root_abs, attack_name)
+        if not os.path.isdir(attack_root):
+            raise ValueError(f"Expected directory not found: {attack_root} (for attack '{attack_name}')")
+        attack_roots.append((attack_name, attack_root))
 
     # Domain 推斷（依 input_root 路徑）
     domain = args.domain
@@ -462,11 +489,9 @@ def extract_features(args):
         output_root = args.output_root
 
     base_output = os.path.join(output_root, domain, args.split_name)
-    output_dir_attack = os.path.join(base_output, args.attack_dir)
-    output_dir_clean = os.path.join(base_output, args.clean_dir)
 
     print(f"[INFO] input_root (parent) = {input_root_abs}")
-    print(f"[INFO] attack_dir = {args.attack_dir} -> {attack_root}")
+    print(f"[INFO] attack_dirs = {attack_names}")
     print(f"[INFO] clean_dir  = {args.clean_dir} -> {clean_root}")
     print(f"[INFO] domain = {domain}")
     print(f"[INFO] output (attack) = {output_dir_attack}")
@@ -484,18 +509,22 @@ def extract_features(args):
     extractor.to(device)
     extractor.eval()
 
-    # 先抽攻擊類別，再抽乾淨類別
-    _run_one_subset(
-        args,
-        data_root=attack_root,
-        subset_name=args.attack_dir,
-        dataset_role="attack",
-        output_dir=output_dir_attack,
-        domain=domain,
-        device=device,
-        extractor=extractor,
-        transform=transform,
-    )
+    # 先抽多個攻擊類別，再抽乾淨類別
+    for attack_name, attack_root in attack_roots:
+        output_dir_attack = os.path.join(base_output, attack_name)
+        _run_one_subset(
+            args,
+            data_root=attack_root,
+            subset_name=attack_name,
+            dataset_role="attack",
+            output_dir=output_dir_attack,
+            domain=domain,
+            device=device,
+            extractor=extractor,
+            transform=transform,
+        )
+
+    output_dir_clean = os.path.join(base_output, args.clean_dir)
     _run_one_subset(
         args,
         data_root=clean_root,
@@ -525,6 +554,13 @@ def parse_args():
         type=str,
         required=True,
         help="攻擊類別子資料夾名稱（相對於 input_root），例如 badnets、refool。",
+    )
+    parser.add_argument(
+        "--attack_dirs",
+        type=str,
+        nargs="+",
+        default=None,
+        help="多個攻擊類別子資料夾名稱（相對於 input_root）。若提供，會覆蓋 --attack_dir。",
     )
     parser.add_argument(
         "--clean_dir",
