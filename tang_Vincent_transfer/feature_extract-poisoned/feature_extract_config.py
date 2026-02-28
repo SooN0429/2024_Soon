@@ -4,7 +4,7 @@
 用法：
 - Extract_feature_map_v2.py 會 import FEATURE_EXTRACT_CFG 作為 argparse 的預設值。
 - 執行時依 --domain source/target 選用 SOURCE_EXTRACT_PROFILE 或 TARGET_EXTRACT_PROFILE，
-  作為 samples_per_class、extracted_layer、attack_dirs、clean_dir 的預設值（CLI 可覆蓋）。
+  作為 samples_per_class、extracted_layer、clean_dir 的預設值（CLI 可覆蓋）；attack_dirs / attack_dir 需由命令列二選一必填。
 - 輸出的 split_name 由程式依 domain、attack_dirs、clean_dir 自動產生，格式：Domain_train_nclass(類別名)。
 """
 
@@ -21,7 +21,7 @@ FEATURE_EXTRACT_CFG = {
     "backbone": "resnet18",
     "pretrained": True,
     "transform_mode": "safe_eval",
-    "pooling": "avg",
+    "pooling": "none",
     "min_class_policy": "truncate",
     "max_total_samples": None,
     "save_filenames": True,
@@ -33,7 +33,6 @@ SOURCE_EXTRACT_PROFILE = {
     "split_name": "Source_train_2Attack_clean", # 輸出路徑名稱，以此名稱為例，程式抽取完的特徵會放入 output_root/domain(Source/Target)/Source_train_2Attack_clean
     "samples_per_class": 100, # 每個類別抽取100筆資料
     "extracted_layer": "7_point", # 抽取第7層特徵
-    "attack_dirs": ["badnets", "refool"], # 攻擊類別
     "clean_dir": "clean", # 乾淨類別
 }
 
@@ -41,6 +40,5 @@ TARGET_EXTRACT_PROFILE = {
     "split_name": "Target_train_3class(badnets_refool_clean)", # 輸出路徑名稱，以此名稱為例，程式抽取完的特徵會放入 output_root/domain(Source/Target)/Target_train_3class(badnets_refool_clean)
     "samples_per_class": 20, # 每個類別抽取20筆資料
     "extracted_layer": "7_point", # 抽取第7層特徵
-    "attack_dirs": ["badnets", "refool"], # 攻擊類別
     "clean_dir": "clean", # 乾淨類別
 }

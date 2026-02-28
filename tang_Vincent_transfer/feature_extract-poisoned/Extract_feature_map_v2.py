@@ -1,35 +1,11 @@
 # 特徵抽取之預設參數（seed、batch_size、pooling 等）來自 feature_extract_config.FEATURE_EXTRACT_CFG。
 # === Example commands（一次跑 attack + clean 兩套特徵）===
-# Source：父目錄為 train_source，底下有 badnets / clean 等子資料夾（各含 CIFAR-10 0~9）
-# 單一攻擊（舊行為，相容）
-# python Extract_feature_map_v2.py \
-#   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_source" \
-#   --attack_dir badnets \
-#   --clean_dir clean \
-#   --output_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_" \
-#   --split_name Source_train_badnets_clean \
-#   --samples_per_class 100 \
-#   --min_class_policy oversample \
-#   --extracted_layer 7_point \
-#   --pooling none
-#
-# 多個攻擊（例如 badnets + refool）
-# python Extract_feature_map_v2.py \
-#   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_source" \
-#   --attack_dirs badnets refool \
-#   --clean_dir clean \
-#   --output_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_" \
-#   --split_name Source_train_multiAttack_clean \
-#   --samples_per_class 100 \
-#   --min_class_policy oversample \
-#   --extracted_layer 7_point \
-#   --pooling none
-#
-# Target：父目錄為 train_target，同樣指定 attack_dir(s) / clean_dir
-# python Extract_feature_map_v2.py \
-#   --attack_dir badnets \
-#   --attack_dirs badnets refool \
-#   --clean_dir clean
+# 僅提取一個攻擊類別的特徵執行範例
+# python Extract_feature_map_v2.py --domain source --attack_dir badnets
+# python Extract_feature_map_v2.py --domain target --attack_dir badnets
+# 提取多個攻擊類別的特徵執行範例
+# python Extract_feature_map_v2.py --domain source --attack_dirs badnets refool
+# python Extract_feature_map_v2.py --domain target --attack_dirs badnets refool
 
 import argparse
 import json
@@ -468,7 +444,7 @@ def extract_features(args):
         attack_names = [args.attack_dir] if args.attack_dir else []
 
     if not attack_names:
-        raise ValueError("attack_dirs 或 attack_dir 未設定，且 profile 中無 attack_dirs。")
+        raise ValueError("attack_dirs 或 attack_dir 未設定，請在命令列指定其中一個參數。")
 
     clean_root = os.path.join(input_root_abs, args.clean_dir)
     if not os.path.isdir(clean_root):
@@ -567,14 +543,14 @@ def parse_args():
         "--attack_dir",
         type=str,
         default=None,
-        help="單一攻擊類別子資料夾名稱。未指定時由 profile 的 attack_dirs 第一項填入。",
+        help="單一攻擊類別子資料夾名稱。與 attack_dirs 二選一必填，不可同時使用。",
     )
     parser.add_argument(
         "--attack_dirs",
         type=str,
         nargs="+",
         default=None,
-        help="多個攻擊類別子資料夾名稱。未指定時使用 profile 的 attack_dirs。",
+        help="多個攻擊類別子資料夾名稱。與 attack_dir 二選一必填，不可同時使用。",
     )
     parser.add_argument(
         "--clean_dir",
@@ -697,12 +673,25 @@ def apply_domain_profile(args):
         args.extracted_layer = profile["extracted_layer"]
     if getattr(args, "clean_dir", None) is None:
         args.clean_dir = profile["clean_dir"]
-    if getattr(args, "attack_dirs", None) is None or (
-        isinstance(getattr(args, "attack_dirs", None), list) and len(args.attack_dirs) == 0
-    ):
-        args.attack_dirs = list(profile["attack_dirs"])
-    if getattr(args, "attack_dir", None) is None:
-        args.attack_dir = args.attack_dirs[0] if args.attack_dirs else None
+
+    # attack_dir / attack_dirs 二選一必填，且不可同時填寫
+    user_has_attack_dirs = (
+        isinstance(getattr(args, "attack_dirs", None), list) and len(args.attack_dirs) > 0
+    )
+    user_has_attack_dir = getattr(args, "attack_dir", None) is not None and (args.attack_dir or "").strip() != ""
+
+    if user_has_attack_dirs and user_has_attack_dir:
+        raise ValueError(
+            "attack_dirs 與 attack_dir 不可同時填寫，請只填寫其中一個："
+            " 使用 --attack_dir 指定單一攻擊類別，或使用 --attack_dirs 指定多個攻擊類別。"
+        )
+    if not user_has_attack_dirs and not user_has_attack_dir:
+        raise ValueError(
+            "請填寫 attack_dirs 或 attack_dir 其中一個參數以指定要抽取的攻擊類別。"
+            " 使用 --attack_dir 指定單一攻擊類別，或使用 --attack_dirs 指定多個攻擊類別。"
+        )
+    # 僅填 attack_dirs 時：不設定 attack_dir，讓 extract_features 走多攻擊分支
+    # 僅填 attack_dir 時：不設定 attack_dirs，讓 extract_features 走單一攻擊分支
 
     if args.samples_per_class is None or args.extracted_layer is None:
         raise ValueError("samples_per_class 與 extracted_layer 為必填，請在 profile 或 CLI 中設定。")
