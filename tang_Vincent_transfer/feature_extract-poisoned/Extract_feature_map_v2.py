@@ -25,17 +25,11 @@
 #   --extracted_layer 7_point \
 #   --pooling none
 #
-# Target：父目錄為 train_target，同樣指定 attack_dir(s) / clean_dir
-# python Extract_feature_map_v2.py \
-#   --input_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_target" \
-#   --attack_dirs badnets refool \
-#   --clean_dir clean \
-#   --output_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_" \
-#   --split_name Target_train_multiAttack_clean \
-#   --samples_per_class 20 \
-#   --min_class_policy oversample \
-#   --extracted_layer 7_point \
-#   --pooling none
+Target：父目錄為 train_target，同樣指定 attack_dir(s) / clean_dir
+python Extract_feature_map_v2.py \
+  --attack_dir badnets \
+  --attack_dirs badnets refool \
+  --clean_dir clean
 
 import argparse
 import json
@@ -450,6 +444,12 @@ def extract_features(args):
     if args.device == "cuda" and torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
 
+    if args.input_root is None:
+        raise ValueError(
+            "input_root 未指定。請在 feature_extract_config.py 的 FEATURE_EXTRACT_CFG 中設定 input_root，"
+            "或於命令列傳入 --input_root。"
+        )
+
     # input_root 為 parent，底下有多個攻擊資料夾與一個 clean_dir
     input_root_abs = os.path.abspath(args.input_root)
 
@@ -486,10 +486,11 @@ def extract_features(args):
         raise ValueError(f"domain must be 'source' or 'target', got {domain}.")
 
     if args.output_root is None:
-        parent_dir = os.path.dirname(input_root_abs)
-        output_root = os.path.join(parent_dir, "features")
-    else:
-        output_root = args.output_root
+        raise ValueError(
+            "output_root 未指定。請在 feature_extract_config.py 的 FEATURE_EXTRACT_CFG 中設定 output_root，"
+            "或於命令列傳入 --output_root。"
+        )
+    output_root = args.output_root
 
     base_output = os.path.join(output_root, domain, args.split_name)
 
@@ -549,8 +550,8 @@ def parse_args():
     parser.add_argument(
         "--input_root",
         type=str,
-        required=True,
-        help="父目錄路徑，底下需有 attack_dir 與 clean_dir 兩個子資料夾（例如 train_source）。",
+        default=ECFG.get("input_root"),
+        help="父目錄路徑，底下需有 attack_dir 與 clean_dir 子資料夾（例如 train_source/train_target）。未指定時使用 feature_extract_config.py 的 input_root。",
     )
     parser.add_argument(
         "--attack_dir",
@@ -574,8 +575,8 @@ def parse_args():
     parser.add_argument(
         "--output_root",
         type=str,
-        default=None,
-        help="features 輸出根目錄；若未給，預設為 input_root 同層的 features/。",
+        default=ECFG.get("output_root"),
+        help="features 輸出根目錄。未指定時使用 feature_extract_config 的 output_root；若 config 也未設定則報錯並提醒使用者。",
     )
     parser.add_argument(
         "--domain",
