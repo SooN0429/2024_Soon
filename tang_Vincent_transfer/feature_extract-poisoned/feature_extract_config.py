@@ -3,14 +3,16 @@
 
 用法：
 - Extract_feature_map_v2.py 會 import FEATURE_EXTRACT_CFG 作為 argparse 的預設值。
-- SOURCE_EXTRACT_PROFILE / TARGET_EXTRACT_PROFILE 為常用實驗組合，可於 shell 或腳本中參考，
-  或未來擴充為從 config 讀取 profile 再帶入 CLI。
+- 執行時依 --domain source/target 選用 SOURCE_EXTRACT_PROFILE 或 TARGET_EXTRACT_PROFILE，
+  作為 samples_per_class、extracted_layer、attack_dirs、clean_dir 的預設值（CLI 可覆蓋）。
+- 輸出的 split_name 由程式依 domain、attack_dirs、clean_dir 自動產生，格式：Domain_train_nclass(類別名)。
 """
 
 # 通用預設（特徵抽取腳本之超參數與固定路徑）
-# 路徑：若不更動機器/磁碟結構，通常只改底下程式產生的資料夾名（如 split_name），可不傳 CLI 覆蓋。
+# input_root：僅放「父目錄」，底下需有 train_source、train_target；程式依 --domain 選用其一。
+# 來源/目標專用設定（樣本數等）請用 SOURCE_EXTRACT_PROFILE / TARGET_EXTRACT_PROFILE。
 FEATURE_EXTRACT_CFG = {
-    "input_root": "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/train_target",
+    "input_root": "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10",
     "output_root": "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_",
     "seed": 42,  # 隨機種子(挑選抽取特徵的樣本用的隨機種子)
     "batch_size": 32,

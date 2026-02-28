@@ -25,11 +25,11 @@
 #   --extracted_layer 7_point \
 #   --pooling none
 #
-Target：父目錄為 train_target，同樣指定 attack_dir(s) / clean_dir
-python Extract_feature_map_v2.py \
-  --attack_dir badnets \
-  --attack_dirs badnets refool \
-  --clean_dir clean
+# Target：父目錄為 train_target，同樣指定 attack_dir(s) / clean_dir
+# python Extract_feature_map_v2.py \
+#   --attack_dir badnets \
+#   --attack_dirs badnets refool \
+#   --clean_dir clean
 
 import argparse
 import json
@@ -44,7 +44,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, models, transforms
 
-from feature_extract_config import FEATURE_EXTRACT_CFG as ECFG
+from feature_extract_config import (
+    FEATURE_EXTRACT_CFG as ECFG,
+    SOURCE_EXTRACT_PROFILE,
+    TARGET_EXTRACT_PROFILE,
+)
 
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -449,19 +453,23 @@ def extract_features(args):
             "input_root 未指定。請在 feature_extract_config.py 的 FEATURE_EXTRACT_CFG 中設定 input_root，"
             "或於命令列傳入 --input_root。"
         )
+    if args.domain not in ("source", "target"):
+        raise ValueError(f"domain 必須為 source 或 target，目前為 {args.domain!r}。")
 
-    # input_root 為 parent，底下有多個攻擊資料夾與一個 clean_dir
-    input_root_abs = os.path.abspath(args.input_root)
+    domain = args.domain
+    subdir = "train_source" if domain == "source" else "train_target"
+    input_root_abs = os.path.abspath(os.path.join(args.input_root, subdir))
+    if not os.path.isdir(input_root_abs):
+        raise ValueError(f"目錄不存在: {input_root_abs}（請確認 {args.input_root} 底下有 {subdir}）。")
 
-    # 建立攻擊資料夾名稱清單：
-    # - 若提供 --attack_dirs（多攻擊模式），使用其中的名稱
-    # - 否則退回單一 --attack_dir
     if getattr(args, "attack_dirs", None):
-        attack_names = list(dict.fromkeys(args.attack_dirs))  # 去除重複並保留順序
+        attack_names = list(dict.fromkeys(args.attack_dirs))
     else:
-        attack_names = [args.attack_dir]
+        attack_names = [args.attack_dir] if args.attack_dir else []
 
-    # 檢查所有攻擊與乾淨資料夾是否存在
+    if not attack_names:
+        raise ValueError("attack_dirs 或 attack_dir 未設定，且 profile 中無 attack_dirs。")
+
     clean_root = os.path.join(input_root_abs, args.clean_dir)
     if not os.path.isdir(clean_root):
         raise ValueError(f"Expected directory not found: {clean_root} (for clean)")
@@ -473,18 +481,6 @@ def extract_features(args):
             raise ValueError(f"Expected directory not found: {attack_root} (for attack '{attack_name}')")
         attack_roots.append((attack_name, attack_root))
 
-    # Domain 推斷（依 input_root 路徑）
-    domain = args.domain
-    if domain is None:
-        domain = infer_domain_from_path(input_root_abs)
-    if domain is None:
-        raise ValueError(
-            f"Cannot infer domain from input_root='{args.input_root}'. "
-            f"Please specify --domain source or --domain target."
-        )
-    if domain not in {"source", "target"}:
-        raise ValueError(f"domain must be 'source' or 'target', got {domain}.")
-
     if args.output_root is None:
         raise ValueError(
             "output_root 未指定。請在 feature_extract_config.py 的 FEATURE_EXTRACT_CFG 中設定 output_root，"
@@ -492,14 +488,21 @@ def extract_features(args):
         )
     output_root = args.output_root
 
-    base_output = os.path.join(output_root, domain, args.split_name)
+    if args.split_name is None:
+        Domain = "Source" if domain == "source" else "Target"
+        n_class = len(attack_names) + 1
+        class_part = "_".join(attack_names + [args.clean_dir])
+        args.split_name = f"{Domain}_train_{n_class}class({class_part})"
+    split_name = args.split_name
 
-    print(f"[INFO] input_root (parent) = {input_root_abs}")
+    base_output = os.path.join(output_root, domain, split_name)
+
+    print(f"[INFO] input_root (effective) = {input_root_abs}")
     print(f"[INFO] attack_dirs = {attack_names}")
     print(f"[INFO] clean_dir  = {args.clean_dir} -> {clean_root}")
     print(f"[INFO] domain = {domain}")
-    print(f"[INFO] output (attack) = {output_dir_attack}")
-    print(f"[INFO] output (clean)  = {output_dir_clean}")
+    print(f"[INFO] split_name = {split_name}")
+    print(f"[INFO] base_output = {base_output}")
 
     transform = build_transform(args.transform_mode)
 
@@ -551,26 +554,33 @@ def parse_args():
         "--input_root",
         type=str,
         default=ECFG.get("input_root"),
-        help="父目錄路徑，底下需有 attack_dir 與 clean_dir 子資料夾（例如 train_source/train_target）。未指定時使用 feature_extract_config.py 的 input_root。",
+        help="父目錄路徑，底下需有 train_source 與 train_target；程式依 --domain 使用其一。未指定時使用 feature_extract_config 的 input_root。",
+    )
+    parser.add_argument(
+        "--domain",
+        type=str,
+        choices=["source", "target"],
+        default=None,
+        help="來源端或目標端，必填；決定使用 SOURCE_EXTRACT_PROFILE 或 TARGET_EXTRACT_PROFILE，並進入 train_source 或 train_target。未指定時會報錯。",
     )
     parser.add_argument(
         "--attack_dir",
         type=str,
-        required=True,
-        help="攻擊類別子資料夾名稱（相對於 input_root），例如 badnets、refool。",
+        default=None,
+        help="單一攻擊類別子資料夾名稱。未指定時由 profile 的 attack_dirs 第一項填入。",
     )
     parser.add_argument(
         "--attack_dirs",
         type=str,
         nargs="+",
         default=None,
-        help="多個攻擊類別子資料夾名稱（相對於 input_root）。若提供，會覆蓋 --attack_dir。",
+        help="多個攻擊類別子資料夾名稱。未指定時使用 profile 的 attack_dirs。",
     )
     parser.add_argument(
         "--clean_dir",
         type=str,
-        required=True,
-        help="乾淨類別子資料夾名稱（相對於 input_root），例如 clean。",
+        default=None,
+        help="乾淨類別子資料夾名稱。未指定時使用 profile 的 clean_dir。",
     )
     parser.add_argument(
         "--output_root",
@@ -579,23 +589,16 @@ def parse_args():
         help="features 輸出根目錄。未指定時使用 feature_extract_config 的 output_root；若 config 也未設定則報錯並提醒使用者。",
     )
     parser.add_argument(
-        "--domain",
-        type=str,
-        choices=["source", "target"],
-        default=None,
-        help="覆蓋自動判斷的 domain（source/target）。",
-    )
-    parser.add_argument(
         "--split_name",
         type=str,
-        default=ECFG["split_name"],
-        help="split 名稱，用於輸出路徑與檔名。",
+        default=None,
+        help="未指定時依 domain、attack_dirs、clean_dir 自動產生（格式：Domain_train_nclass(類別名)）；若提供則覆蓋自動值。",
     )
     parser.add_argument(
         "--samples_per_class",
         type=int,
-        required=True,
-        help="每類欲抽樣張數 K。",
+        default=None,
+        help="每類欲抽樣張數 K。未指定時使用 profile 的 samples_per_class。",
     )
     parser.add_argument(
         "--min_class_policy",
@@ -630,7 +633,7 @@ def parse_args():
     parser.add_argument(
         "--extracted_layer",
         type=str,
-        required=True,
+        default=None,
         choices=[
             "1_point",
             "2_point",
@@ -642,7 +645,7 @@ def parse_args():
             "8_point",
             "9_point",
         ],
-        help="要抽取的層名稱：1_point ~ 9_point（與學姊原始設定對齊）。",
+        help="要抽取的層名稱：1_point ~ 9_point。未指定時使用 profile 的 extracted_layer。",
     )
     parser.add_argument(
         "--save_filenames",
@@ -674,8 +677,40 @@ def parse_args():
     return parser.parse_args()
 
 
+def apply_domain_profile(args):
+    """
+    依 args.domain 選用 SOURCE_EXTRACT_PROFILE 或 TARGET_EXTRACT_PROFILE，
+    將未由 CLI 指定的參數補上 profile 預設值。split_name 不在此填入，由 extract_features 依 attack_dirs、clean_dir 自動產生。
+    """
+    if args.domain is None:
+        raise ValueError(
+            "請指定 --domain source 或 --domain target。"
+        )
+    if args.domain not in ("source", "target"):
+        raise ValueError(f"domain 必須為 source 或 target，目前為 {args.domain!r}。")
+
+    profile = SOURCE_EXTRACT_PROFILE if args.domain == "source" else TARGET_EXTRACT_PROFILE
+
+    if getattr(args, "samples_per_class", None) is None:
+        args.samples_per_class = profile["samples_per_class"]
+    if getattr(args, "extracted_layer", None) is None:
+        args.extracted_layer = profile["extracted_layer"]
+    if getattr(args, "clean_dir", None) is None:
+        args.clean_dir = profile["clean_dir"]
+    if getattr(args, "attack_dirs", None) is None or (
+        isinstance(getattr(args, "attack_dirs", None), list) and len(args.attack_dirs) == 0
+    ):
+        args.attack_dirs = list(profile["attack_dirs"])
+    if getattr(args, "attack_dir", None) is None:
+        args.attack_dir = args.attack_dirs[0] if args.attack_dirs else None
+
+    if args.samples_per_class is None or args.extracted_layer is None:
+        raise ValueError("samples_per_class 與 extracted_layer 為必填，請在 profile 或 CLI 中設定。")
+
+
 def main():
     args = parse_args()
+    apply_domain_profile(args)
     extract_features(args)
 
 
