@@ -1,3 +1,4 @@
+# 特徵抽取之預設參數（seed、batch_size、pooling 等）來自 feature_extract_config.FEATURE_EXTRACT_CFG。
 # === Example commands（一次跑 attack + clean 兩套特徵）===
 # Source：父目錄為 train_source，底下有 badnets / clean 等子資料夾（各含 CIFAR-10 0~9）
 # 單一攻擊（舊行為，相容）
@@ -48,6 +49,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, models, transforms
+
+from feature_extract_config import FEATURE_EXTRACT_CFG as ECFG
 
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -584,7 +587,7 @@ def parse_args():
     parser.add_argument(
         "--split_name",
         type=str,
-        default="train",
+        default=ECFG["split_name"],
         help="split 名稱，用於輸出路徑與檔名。",
     )
     parser.add_argument(
@@ -597,30 +600,30 @@ def parse_args():
         "--min_class_policy",
         type=str,
         choices=["truncate", "error", "oversample"],
-        default="truncate",
+        default=ECFG["min_class_policy"],
         help="當某類少於 K 張時的策略：truncate/error/oversample。",
     )
-    parser.add_argument("--seed", type=int, default=42, help="隨機種子（抽樣與 oversample 用）。")
-    parser.add_argument("--batch_size", type=int, default=32, help="特徵抽取的 batch size。")
-    parser.add_argument("--num_workers", type=int, default=4, help="DataLoader workers 數量。")
+    parser.add_argument("--seed", type=int, default=ECFG["seed"], help="隨機種子（抽樣與 oversample 用）。")
+    parser.add_argument("--batch_size", type=int, default=ECFG["batch_size"], help="特徵抽取的 batch size。")
+    parser.add_argument("--num_workers", type=int, default=ECFG["num_workers"], help="DataLoader workers 數量。")
     parser.add_argument(
         "--device",
         type=str,
         choices=["cpu", "cuda"],
-        default="cuda" if torch.cuda.is_available() else "cpu",
+        default=ECFG["device"] if (ECFG["device"] == "cuda" and torch.cuda.is_available()) else "cpu",
         help="裝置：cpu 或 cuda。",
     )
     parser.add_argument(
         "--backbone",
         type=str,
         choices=["resnet18"],
-        default="resnet18",
+        default=ECFG["backbone"],
         help="backbone 模型，目前僅支援 resnet18。",
     )
     parser.add_argument(
         "--pretrained",
         type=str2bool,
-        default=True,
+        default=ECFG["pretrained"],
         help="是否使用 ImageNet 預訓練權重（true/false）。",
     )
     parser.add_argument(
@@ -643,27 +646,27 @@ def parse_args():
     parser.add_argument(
         "--save_filenames",
         type=str2bool,
-        default=True,
+        default=ECFG["save_filenames"],
         help="是否在 meta 中存每張圖的相對檔名（true/false）。",
     )
     parser.add_argument(
         "--transform_mode",
         type=str,
         choices=["safe_eval", "train_aug"],
-        default="safe_eval",
+        default=ECFG["transform_mode"],
         help="transform 模式：safe_eval（Resize+CenterCrop+Normalize）或 train_aug（隨機增強）。",
     )
     parser.add_argument(
         "--pooling",
         type=str,
         choices=["none", "avg"],
-        default="avg",
+        default=ECFG["pooling"],
         help="none：輸出 CxHxW；avg：global average pooling 成 NxC。",
     )
     parser.add_argument(
         "--max_total_samples",
         type=int,
-        default=None,
+        default=ECFG["max_total_samples"],
         help="限制總抽樣數（debug 用，可為 None 表示不限制）。",
     )
 

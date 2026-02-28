@@ -91,12 +91,13 @@ def parse_args() -> argparse.Namespace:
         "--backbone_init_mode",
         type=str,
         default="fusion",
-        choices=["fusion", "single_source", "single_target"],
+        choices=["fusion", "single_source", "single_target", "scratch"],
         help=(
             "backbone 初始化策略："
             "'fusion' = source+target 線性融合（原 M2O）；"
             "'single_source' = 只用 source 模型初始化；"
-            "'single_target' = 只用 target 模型初始化。"
+            "'single_target' = 只用 target 模型初始化；"
+            "'scratch' = 不載入任何 checkpoint，直接以隨機權重訓練 3 類模型。"
         ),
     )
     parser.add_argument(
@@ -260,6 +261,37 @@ def evaluate_on_images(model, loader: DataLoader, device: torch.device) -> float
     return correct / total
 
 
+@torch.no_grad()
+def evaluate_2class_checkpoint(
+    ckpt,
+    class_names_2: List[str],
+    eval_image_root: str,
+    batch_size: int,
+    per_digit_k: int,
+    device: torch.device,
+) -> float:
+    """
+    給定 2 類 checkpoint 與其類別名稱，建立對應的 2 類 Transfer_Net
+    與 target test DataLoader，回傳 accuracy。
+    """
+    if len(class_names_2) != 2:
+        raise ValueError(f"class_names_2 must have length 2, got {len(class_names_2)}")
+
+    loader_2 = build_attack_balanced_test_loader(
+        root=eval_image_root,
+        batch_size=batch_size,
+        attack_types=class_names_2,
+        per_digit_k=per_digit_k,
+    )
+
+    num_classes_2 = ckpt.get("num_classes", len(ckpt.get("class_names", [])) or 2)
+    model_2 = models.Transfer_Net(num_classes_2).to(device)
+    model_2.load_state_dict(ckpt["state_dict"], strict=True)
+
+    acc = evaluate_on_images(model_2, loader_2, device)
+    return acc
+
+
 def main() -> None:
     args = parse_args()
     device = torch.device(args.device)
@@ -310,6 +342,52 @@ def main() -> None:
 
     # 3. 建立最終模型 Transfer_Net(num_classes)，依據不同 init 模式初始化
     if args.backbone_init_mode == "fusion":
+        # 先在 target test set 上評估原始 2 類 source/target 模型的 baseline 準確率（若可行）
+        src_classes_2 = ckpt_src.get("class_names", None)
+        tgt_classes_2 = ckpt_tgt.get("class_names", None)
+        if (
+            isinstance(src_classes_2, list)
+            and isinstance(tgt_classes_2, list)
+            and len(src_classes_2) == 2
+            and len(tgt_classes_2) == 2
+        ):
+            try:
+                acc_src_2 = evaluate_2class_checkpoint(
+                    ckpt=ckpt_src,
+                    class_names_2=src_classes_2,
+                    eval_image_root=args.eval_image_root,
+                    batch_size=args.batch_size,
+                    per_digit_k=args.per_digit_k,
+                    device=device,
+                )
+                print(
+                    f"[BASELINE] Source 2-class acc on target test "
+                    f"({src_classes_2}) = {acc_src_2*100:.2f}%"
+                )
+            except Exception as e:
+                print(f"[WARN] Failed to compute source 2-class baseline: {e}")
+
+            try:
+                acc_tgt_2 = evaluate_2class_checkpoint(
+                    ckpt=ckpt_tgt,
+                    class_names_2=tgt_classes_2,
+                    eval_image_root=args.eval_image_root,
+                    batch_size=args.batch_size,
+                    per_digit_k=args.per_digit_k,
+                    device=device,
+                )
+                print(
+                    f"[BASELINE] Target 2-class acc on target test "
+                    f"({tgt_classes_2}) = {acc_tgt_2*100:.2f}%"
+                )
+            except Exception as e:
+                print(f"[WARN] Failed to compute target 2-class baseline: {e}")
+        else:
+            print(
+                "[WARN] Cannot compute 2-class baselines: "
+                "ckpt_src/class_names or ckpt_tgt/class_names missing or not 2-class."
+            )
+
         print(
             f"[INFO] Fusing Transfer_Net with para_source={args.para_source}, "
             f"para_target={args.para_target}"
@@ -341,7 +419,7 @@ def main() -> None:
                 fused_state[name] = model.state_dict()[name].clone()
         model.load_state_dict(fused_state, strict=False)
 
-    else:
+    elif args.backbone_init_mode in ("single_source", "single_target"):
         # single_source / single_target：只用單一模型初始化 backbone，
         # classifier_layer 的 3 類 head 由隨機初始化開始，用 3 類特徵訓練。
         if args.backbone_init_mode == "single_source":
@@ -363,7 +441,15 @@ def main() -> None:
                 dst_state[name] = src_state[name].clone()
                 copied_keys += 1
         model.load_state_dict(dst_state, strict=False)
-        print(f"[INFO] Copied {copied_keys} parameters from selected checkpoint into new {num_classes}-class model.")
+        print(
+            f"[INFO] Copied {copied_keys} parameters from selected checkpoint into new {num_classes}-class model."
+        )
+
+    else:
+        # scratch：完全不載入任何 checkpoint，隨機初始化 3 類模型
+        print("[INFO] Initializing model from scratch (no pretrained checkpoint).")
+        model = models.Transfer_Net(num_classes)
+        model = model.to(device)
 
     # 4. 構建 DataLoader、Optimizer、Scheduler、Loss
     train_loader = build_feature_dataloader(features, labels, args.batch_size)
