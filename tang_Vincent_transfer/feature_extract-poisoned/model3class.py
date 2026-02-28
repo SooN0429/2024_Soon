@@ -262,6 +262,54 @@ def evaluate_on_images(model, loader: DataLoader, device: torch.device) -> float
 
 
 @torch.no_grad()
+def evaluate_on_images_detailed(
+    model,
+    loader: DataLoader,
+    device: torch.device,
+    class_names: List[str],
+) -> Tuple[float, dict, dict]:
+    """
+    測試時用影像，回傳整體準確率、各類別準確率、各類別平均信心。
+    信心 = 預測類別的 softmax 機率（該類樣本上的平均）。
+    """
+    model.eval()
+    test_flag = 1
+    num_classes = len(class_names)
+    class_correct = [0] * num_classes
+    class_total = [0] * num_classes
+    class_conf_sum = [0.0] * num_classes
+
+    for images, labels in loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        logits = model.predict(images, test_flag)
+        probs = torch.softmax(logits, dim=1)
+        preds = torch.argmax(logits, dim=1)
+        pred_conf = probs.gather(1, preds.unsqueeze(1)).squeeze(1)
+
+        for i in range(labels.size(0)):
+            c = labels[i].item()
+            class_total[c] += 1
+            if preds[i].item() == c:
+                class_correct[c] += 1
+            class_conf_sum[c] += pred_conf[i].item()
+
+    total_correct = sum(class_correct)
+    total_samples = sum(class_total)
+    overall_acc = total_correct / total_samples if total_samples else 0.0
+
+    per_class_acc = {}
+    per_class_conf = {}
+    for c in range(num_classes):
+        name = class_names[c]
+        n = class_total[c]
+        per_class_acc[name] = (class_correct[c] / n * 100.0) if n else 0.0
+        per_class_conf[name] = (class_conf_sum[c] / n) if n else 0.0
+
+    return overall_acc, per_class_acc, per_class_conf
+
+
+@torch.no_grad()
 def evaluate_2class_checkpoint(
     ckpt,
     class_names_2: List[str],
@@ -269,10 +317,10 @@ def evaluate_2class_checkpoint(
     batch_size: int,
     per_digit_k: int,
     device: torch.device,
-) -> float:
+) -> Tuple[float, dict, dict]:
     """
     給定 2 類 checkpoint 與其類別名稱，建立對應的 2 類 Transfer_Net
-    與 target test DataLoader，回傳 accuracy。
+    與 target test DataLoader，回傳 (accuracy, per_class_acc, per_class_conf)。
     """
     if len(class_names_2) != 2:
         raise ValueError(f"class_names_2 must have length 2, got {len(class_names_2)}")
@@ -288,8 +336,10 @@ def evaluate_2class_checkpoint(
     model_2 = models.Transfer_Net(num_classes_2).to(device)
     model_2.load_state_dict(ckpt["state_dict"], strict=True)
 
-    acc = evaluate_on_images(model_2, loader_2, device)
-    return acc
+    acc, per_class_acc, per_class_conf = evaluate_on_images_detailed(
+        model_2, loader_2, device, class_names_2
+    )
+    return acc, per_class_acc, per_class_conf
 
 
 def main() -> None:
@@ -352,7 +402,7 @@ def main() -> None:
             and len(tgt_classes_2) == 2
         ):
             try:
-                acc_src_2 = evaluate_2class_checkpoint(
+                acc_src_2, src_per_class_acc, src_per_class_conf = evaluate_2class_checkpoint(
                     ckpt=ckpt_src,
                     class_names_2=src_classes_2,
                     eval_image_root=args.eval_image_root,
@@ -364,11 +414,15 @@ def main() -> None:
                     f"[BASELINE] Source 2-class acc on target test "
                     f"({src_classes_2}) = {acc_src_2*100:.2f}%"
                 )
+                acc_parts = [f"{name}={src_per_class_acc[name]:.2f}%" for name in src_classes_2]
+                conf_parts = [f"{name}={src_per_class_conf[name]:.4f}" for name in src_classes_2]
+                print(f"  Per-class acc: {', '.join(acc_parts)}")
+                print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
             except Exception as e:
                 print(f"[WARN] Failed to compute source 2-class baseline: {e}")
 
             try:
-                acc_tgt_2 = evaluate_2class_checkpoint(
+                acc_tgt_2, tgt_per_class_acc, tgt_per_class_conf = evaluate_2class_checkpoint(
                     ckpt=ckpt_tgt,
                     class_names_2=tgt_classes_2,
                     eval_image_root=args.eval_image_root,
@@ -380,6 +434,10 @@ def main() -> None:
                     f"[BASELINE] Target 2-class acc on target test "
                     f"({tgt_classes_2}) = {acc_tgt_2*100:.2f}%"
                 )
+                acc_parts = [f"{name}={tgt_per_class_acc[name]:.2f}%" for name in tgt_classes_2]
+                conf_parts = [f"{name}={tgt_per_class_conf[name]:.4f}" for name in tgt_classes_2]
+                print(f"  Per-class acc: {', '.join(acc_parts)}")
+                print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
             except Exception as e:
                 print(f"[WARN] Failed to compute target 2-class baseline: {e}")
         else:
@@ -491,7 +549,12 @@ def main() -> None:
             device=device,
         )
         scheduler.step()
-        acc = evaluate_on_images(model=model, loader=image_loader, device=device)
+        acc, per_class_acc, per_class_conf = evaluate_on_images_detailed(
+            model=model,
+            loader=image_loader,
+            device=device,
+            class_names=class_names,
+        )
         if acc > best_acc:
             best_acc = acc
         if (epoch - 1) % log_interval == 0 or epoch == 1:
@@ -499,6 +562,11 @@ def main() -> None:
                 f"[Epoch {epoch:03d}/{args.epoch:03d}] "
                 f"train_loss={train_loss:.6f}, eval_acc={acc*100:.2f}% (best={best_acc*100:.2f}%)"
             )
+            for name in class_names:
+                print(
+                    f"  [{name}] acc={per_class_acc[name]:.2f}%, "
+                    f"conf={per_class_conf[name]:.4f}"
+                )
 
     # 6. 儲存模型
     if args.save_model_path:

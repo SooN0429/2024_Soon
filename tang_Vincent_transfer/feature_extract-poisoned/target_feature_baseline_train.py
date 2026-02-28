@@ -20,7 +20,7 @@
 使用方式範例：
 
     python target_feature_baseline_train.py \
-      --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_badnets_clean/" \
+      --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)/" \
       --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test" \
       --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt"
 
@@ -60,6 +60,7 @@ import LabelSmoothing as LS
 import utils  # noqa: F401 - CFG/log 可能引用
 
 from attack_test_dataset import AttackTypeBalancedTestDataset
+from eval_utils import evaluate_on_images_with_per_class
 from feature_train_config import TARGET_FEATURE_CFG as TFCFG
 from feature_train_config import build_attack_balanced_test_loader
 
@@ -234,25 +235,6 @@ def train_one_epoch(
     return total_loss / max(total_samples, 1)
 
 
-@torch.no_grad()
-def evaluate_on_images(model, loader: DataLoader, device: torch.device) -> float:
-    """測試時用影像，test_flag=1，完整 backbone + bottle + classifier。"""
-    model.eval()
-    test_flag = 1
-    correct = 0
-    total = 0
-    for images, labels in loader:
-        images = images.to(device)
-        labels = labels.to(device)
-        logits = model.predict(images, test_flag)
-        preds = torch.argmax(logits, dim=1)
-        correct += (preds == labels).sum().item()
-        total += labels.numel()
-    if total == 0:
-        return 0.0
-    return correct / total
-
-
 def main() -> None:
     args = parse_args()
     device = torch.device(args.device)
@@ -327,7 +309,12 @@ def main() -> None:
             device=device,
         )
         scheduler.step()
-        acc = evaluate_on_images(model=model, loader=image_loader, device=device)
+        acc, details = evaluate_on_images_with_per_class(
+            model=model,
+            loader=image_loader,
+            device=device,
+            class_names=class_names,
+        )
         if acc > best_acc:
             best_acc = acc
         if (epoch - 1) % log_interval == 0 or epoch == 1:
@@ -335,6 +322,11 @@ def main() -> None:
                 f"[Epoch {epoch:03d}/{args.epoch:03d}] "
                 f"train_loss={train_loss:.6f}, eval_acc={acc*100:.2f}% (best={best_acc*100:.2f}%)"
             )
+            if details:
+                acc_parts = [f"{name}={details['per_class_acc'][name]*100:.2f}%" for name in details["per_class_acc"]]
+                conf_parts = [f"{name}={details['per_class_confidence'][name]:.3f}" for name in details["per_class_confidence"]]
+                print(f"  Per-class acc: {', '.join(acc_parts)}")
+                print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
 
     if args.save_model_path:
         save_root = args.save_model_path
