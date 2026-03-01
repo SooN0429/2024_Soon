@@ -12,6 +12,9 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
       refool/
       clean/
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
+
+python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth"
+
 """
 
 import argparse
@@ -142,6 +145,16 @@ def parse_args() -> argparse.Namespace:
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="運算裝置，cuda 或 cpu。",
     )
+    parser.add_argument(
+        "--finetune_mode",
+        type=str,
+        default="full",
+        choices=["full", "head_only"],
+        help=(
+            "微調模式：'full' = 整個模型微調（預設）；"
+            "'head_only' = 僅微調 3 類分類頭（backbone、bottle 凍結）。"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -267,17 +280,21 @@ def evaluate_on_images_detailed(
     loader: DataLoader,
     device: torch.device,
     class_names: List[str],
-) -> Tuple[float, dict, dict]:
+) -> Tuple[float, dict, dict, dict]:
     """
-    測試時用影像，回傳整體準確率、各類別準確率、各類別平均信心。
-    信心 = 預測類別的 softmax 機率（該類樣本上的平均）。
+    測試時用影像，回傳整體準確率、各類別準確率、TP 信心、FP 信心。
+    TP Confidence：僅預測正確的樣本，計算其 max(P) 的平均。
+    FP Confidence：僅預測錯誤的樣本，計算其 max(P) 的平均；無錯誤樣本時為 None。
     """
     model.eval()
     test_flag = 1
     num_classes = len(class_names)
     class_correct = [0] * num_classes
     class_total = [0] * num_classes
-    class_conf_sum = [0.0] * num_classes
+    tp_conf_sum = [0.0] * num_classes
+    tp_count = [0] * num_classes
+    fp_conf_sum = [0.0] * num_classes
+    fp_count = [0] * num_classes
 
     for images, labels in loader:
         images = images.to(device)
@@ -285,28 +302,36 @@ def evaluate_on_images_detailed(
         logits = model.predict(images, test_flag)
         probs = torch.softmax(logits, dim=1)
         preds = torch.argmax(logits, dim=1)
-        pred_conf = probs.gather(1, preds.unsqueeze(1)).squeeze(1)
+        max_p = probs.max(dim=1)[0]
 
         for i in range(labels.size(0)):
             c = labels[i].item()
             class_total[c] += 1
-            if preds[i].item() == c:
+            correct = preds[i].item() == c
+            conf = max_p[i].item()
+            if correct:
                 class_correct[c] += 1
-            class_conf_sum[c] += pred_conf[i].item()
+                tp_conf_sum[c] += conf
+                tp_count[c] += 1
+            else:
+                fp_conf_sum[c] += conf
+                fp_count[c] += 1
 
     total_correct = sum(class_correct)
     total_samples = sum(class_total)
     overall_acc = total_correct / total_samples if total_samples else 0.0
 
     per_class_acc = {}
-    per_class_conf = {}
+    per_class_tp_conf = {}
+    per_class_fp_conf = {}
     for c in range(num_classes):
         name = class_names[c]
         n = class_total[c]
         per_class_acc[name] = (class_correct[c] / n * 100.0) if n else 0.0
-        per_class_conf[name] = (class_conf_sum[c] / n) if n else 0.0
+        per_class_tp_conf[name] = (tp_conf_sum[c] / tp_count[c]) if tp_count[c] else None
+        per_class_fp_conf[name] = (fp_conf_sum[c] / fp_count[c]) if fp_count[c] else None
 
-    return overall_acc, per_class_acc, per_class_conf
+    return overall_acc, per_class_acc, per_class_tp_conf, per_class_fp_conf
 
 
 @torch.no_grad()
@@ -336,9 +361,14 @@ def evaluate_2class_checkpoint(
     model_2 = models.Transfer_Net(num_classes_2).to(device)
     model_2.load_state_dict(ckpt["state_dict"], strict=True)
 
-    acc, per_class_acc, per_class_conf = evaluate_on_images_detailed(
+    acc, per_class_acc, per_class_tp_conf, _ = evaluate_on_images_detailed(
         model_2, loader_2, device, class_names_2
     )
+    # 維持原介面：第三項為可列印的 conf（以 TP conf 代表，無則 0.0）
+    per_class_conf = {
+        name: (per_class_tp_conf[name] if per_class_tp_conf[name] is not None else 0.0)
+        for name in class_names_2
+    }
     return acc, per_class_acc, per_class_conf
 
 
@@ -347,6 +377,7 @@ def main() -> None:
     device = torch.device(args.device)
     print(f"[INFO] Using device: {device}")
     print(f"[INFO] backbone_init_mode = {args.backbone_init_mode}")
+    print(f"[INFO] finetune_mode = {args.finetune_mode}")
 
     # 1. 載入 source 與 target baseline（學姊格式）
     print(f"[INFO] Loading source model from: {args.source_model_path}")
@@ -512,17 +543,33 @@ def main() -> None:
     # 4. 構建 DataLoader、Optimizer、Scheduler、Loss
     train_loader = build_feature_dataloader(features, labels, args.batch_size)
 
-    optimizer = torch.optim.Adam(
-        [
-            {"params": model.base_network.parameters(), "lr": 100 * args.lr},
-            {"params": model.base_network.avgpool.parameters(), "lr": 100 * args.lr},
-            {"params": model.bottle_layer.parameters(), "lr": 10 * args.lr},
-            {"params": model.classifier_layer.parameters(), "lr": 10 * args.lr},
-        ],
-        lr=args.lr,
-        betas=CFG["betas"],
-        weight_decay=CFG["l2_decay"],
-    )
+    if args.finetune_mode == "head_only":
+        for p in model.base_network.parameters():
+            p.requires_grad = False
+        for p in model.base_network.avgpool.parameters():
+            p.requires_grad = False
+        for p in model.bottle_layer.parameters():
+            p.requires_grad = False
+        print("[INFO] finetune_mode = head_only: 僅訓練 classifier_layer，backbone 與 bottle 已凍結。")
+        optimizer = torch.optim.Adam(
+            [{"params": model.classifier_layer.parameters(), "lr": 10 * args.lr}],
+            lr=args.lr,
+            betas=CFG["betas"],
+            weight_decay=CFG["l2_decay"],
+        )
+    else:
+        print("[INFO] finetune_mode = full: 整個模型微調。")
+        optimizer = torch.optim.Adam(
+            [
+                {"params": model.base_network.parameters(), "lr": 100 * args.lr},
+                {"params": model.base_network.avgpool.parameters(), "lr": 100 * args.lr},
+                {"params": model.bottle_layer.parameters(), "lr": 10 * args.lr},
+                {"params": model.classifier_layer.parameters(), "lr": 10 * args.lr},
+            ],
+            lr=args.lr,
+            betas=CFG["betas"],
+            weight_decay=CFG["l2_decay"],
+        )
     scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizer, gamma=0.85, verbose=False
     )
@@ -549,7 +596,7 @@ def main() -> None:
             device=device,
         )
         scheduler.step()
-        acc, per_class_acc, per_class_conf = evaluate_on_images_detailed(
+        acc, per_class_acc, per_class_tp_conf, per_class_fp_conf = evaluate_on_images_detailed(
             model=model,
             loader=image_loader,
             device=device,
@@ -563,9 +610,11 @@ def main() -> None:
                 f"train_loss={train_loss:.6f}, eval_acc={acc*100:.2f}% (best={best_acc*100:.2f}%)"
             )
             for name in class_names:
+                tp_str = f"{per_class_tp_conf[name]:.4f}" if per_class_tp_conf[name] is not None else "N/A"
+                fp_str = f"{per_class_fp_conf[name]:.4f}" if per_class_fp_conf[name] is not None else "N/A"
                 print(
                     f"  [{name}] acc={per_class_acc[name]:.2f}%, "
-                    f"conf={per_class_conf[name]:.4f}"
+                    f"TP_conf={tp_str}, FP_conf={fp_str}"
                 )
 
     # 6. 儲存模型
@@ -582,6 +631,7 @@ def main() -> None:
                 "para_source": args.para_source,
                 "para_target": args.para_target,
                 "backbone_init_mode": args.backbone_init_mode,
+                "finetune_mode": args.finetune_mode,
             },
             args.save_model_path,
         )

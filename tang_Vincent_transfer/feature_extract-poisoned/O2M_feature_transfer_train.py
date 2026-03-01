@@ -323,6 +323,10 @@ def main() -> None:
                 conf_parts = [f"{name}={details['per_class_confidence'][name]:.3f}" for name in details["per_class_confidence"]]
                 print(f"  Per-class acc: {', '.join(acc_parts)}")
                 print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
+                tp_val, fp_val = details.get("tp_confidence", float("nan")), details.get("fp_confidence", float("nan"))
+                tp_str = f"{tp_val:.3f}" if tp_val == tp_val else "N/A"
+                fp_str = f"{fp_val:.3f}" if fp_val == fp_val else "N/A"
+                print(f"  TP Confidence (correct): {tp_str}, FP Confidence (wrong): {fp_str}")
 
     if args.save_model_path:
         save_dir = os.path.dirname(args.save_model_path)

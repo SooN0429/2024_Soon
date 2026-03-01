@@ -28,8 +28,8 @@ SOURCE_FEATURE_CFG = {
 TARGET_FEATURE_CFG = {
     "batch_size": 16,
     "lr": 0.0001,
-    "epoch": 50,
-    "per_digit_k": 50,
+    "epoch": 10,
+    "per_digit_k": 10,
     "log_interval": 1,
 }
 

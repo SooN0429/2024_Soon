@@ -32,8 +32,8 @@ def evaluate_on_images_with_per_class(
     Returns:
         (overall_acc, details):
         - overall_acc: 整體準確率 (0~1)。
-        - details: 若 class_names 有效則為 {"per_class_acc": {name: acc}, "per_class_confidence": {name: conf}}；
-          若某類在測試集中無樣本則不列入該 dict。
+        - details: 若 class_names 有效則為 {"per_class_acc", "per_class_confidence", "tp_confidence", "fp_confidence"}；
+          tp_confidence/fp_confidence 為僅正確/錯誤預測樣本的 max(P) 平均；若某類在測試集中無樣本則不列入 per_class dict。
     """
     model.eval()
     all_labels: List[torch.Tensor] = []
@@ -63,6 +63,14 @@ def evaluate_on_images_with_per_class(
 
     overall_acc = (preds_cat == labels_cat).sum().item() / total
 
+    # TP/FP confidence: 僅正確/錯誤預測樣本的 max(P) 平均
+    correct_mask = preds_cat == labels_cat
+    wrong_mask = preds_cat != labels_cat
+    n_correct = correct_mask.sum().item()
+    n_wrong = wrong_mask.sum().item()
+    tp_confidence = confidences_cat[correct_mask].mean().item() if n_correct > 0 else float("nan")
+    fp_confidence = confidences_cat[wrong_mask].mean().item() if n_wrong > 0 else float("nan")
+
     details = None
     if class_names and len(class_names) > 0:
         per_class_acc: Dict[str, float] = {}
@@ -79,6 +87,8 @@ def evaluate_on_images_with_per_class(
         details = {
             "per_class_acc": per_class_acc,
             "per_class_confidence": per_class_confidence,
+            "tp_confidence": tp_confidence,
+            "fp_confidence": fp_confidence,
         }
 
     return overall_acc, details
