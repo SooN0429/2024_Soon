@@ -12,9 +12,8 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
       refool/
       clean/
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
-
-python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth"
-
+  python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" --finetune_mode full
+  
 """
 
 import argparse
@@ -304,7 +303,7 @@ def evaluate_on_images_detailed(
         preds = torch.argmax(logits, dim=1)
         max_p = probs.max(dim=1)[0]
 
-        for i in range(labels.size(0)):
+        for i in range(labels.size(0)): 
             c = labels[i].item()
             class_total[c] += 1
             correct = preds[i].item() == c
@@ -342,10 +341,10 @@ def evaluate_2class_checkpoint(
     batch_size: int,
     per_digit_k: int,
     device: torch.device,
-) -> Tuple[float, dict, dict]:
+) -> Tuple[float, dict, dict, dict, dict]:
     """
     給定 2 類 checkpoint 與其類別名稱，建立對應的 2 類 Transfer_Net
-    與 target test DataLoader，回傳 (accuracy, per_class_acc, per_class_conf)。
+    與 target test DataLoader，回傳 (accuracy, per_class_acc, per_class_conf, per_class_tp_conf, per_class_fp_conf)。
     """
     if len(class_names_2) != 2:
         raise ValueError(f"class_names_2 must have length 2, got {len(class_names_2)}")
@@ -361,7 +360,7 @@ def evaluate_2class_checkpoint(
     model_2 = models.Transfer_Net(num_classes_2).to(device)
     model_2.load_state_dict(ckpt["state_dict"], strict=True)
 
-    acc, per_class_acc, per_class_tp_conf, _ = evaluate_on_images_detailed(
+    acc, per_class_acc, per_class_tp_conf, per_class_fp_conf = evaluate_on_images_detailed(
         model_2, loader_2, device, class_names_2
     )
     # 維持原介面：第三項為可列印的 conf（以 TP conf 代表，無則 0.0）
@@ -369,7 +368,7 @@ def evaluate_2class_checkpoint(
         name: (per_class_tp_conf[name] if per_class_tp_conf[name] is not None else 0.0)
         for name in class_names_2
     }
-    return acc, per_class_acc, per_class_conf
+    return acc, per_class_acc, per_class_conf, per_class_tp_conf, per_class_fp_conf
 
 
 def main() -> None:
@@ -433,7 +432,7 @@ def main() -> None:
             and len(tgt_classes_2) == 2
         ):
             try:
-                acc_src_2, src_per_class_acc, src_per_class_conf = evaluate_2class_checkpoint(
+                acc_src_2, src_per_class_acc, src_per_class_conf, src_tp_conf, src_fp_conf = evaluate_2class_checkpoint(
                     ckpt=ckpt_src,
                     class_names_2=src_classes_2,
                     eval_image_root=args.eval_image_root,
@@ -449,11 +448,15 @@ def main() -> None:
                 conf_parts = [f"{name}={src_per_class_conf[name]:.4f}" for name in src_classes_2]
                 print(f"  Per-class acc: {', '.join(acc_parts)}")
                 print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
+                tp_parts = [f"{name}={src_tp_conf[name]:.4f}" if src_tp_conf[name] is not None else f"{name}=N/A" for name in src_classes_2]
+                fp_parts = [f"{name}={src_fp_conf[name]:.4f}" if src_fp_conf[name] is not None else f"{name}=N/A" for name in src_classes_2]
+                print(f"  正確預測信心 (TP Confidence): {', '.join(tp_parts)}")
+                print(f"  錯誤預測信心 (FP Confidence): {', '.join(fp_parts)}")
             except Exception as e:
                 print(f"[WARN] Failed to compute source 2-class baseline: {e}")
 
             try:
-                acc_tgt_2, tgt_per_class_acc, tgt_per_class_conf = evaluate_2class_checkpoint(
+                acc_tgt_2, tgt_per_class_acc, tgt_per_class_conf, tgt_tp_conf, tgt_fp_conf = evaluate_2class_checkpoint(
                     ckpt=ckpt_tgt,
                     class_names_2=tgt_classes_2,
                     eval_image_root=args.eval_image_root,
@@ -469,6 +472,10 @@ def main() -> None:
                 conf_parts = [f"{name}={tgt_per_class_conf[name]:.4f}" for name in tgt_classes_2]
                 print(f"  Per-class acc: {', '.join(acc_parts)}")
                 print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
+                tp_parts = [f"{name}={tgt_tp_conf[name]:.4f}" if tgt_tp_conf[name] is not None else f"{name}=N/A" for name in tgt_classes_2]
+                fp_parts = [f"{name}={tgt_fp_conf[name]:.4f}" if tgt_fp_conf[name] is not None else f"{name}=N/A" for name in tgt_classes_2]
+                print(f"  正確預測信心 (TP Confidence): {', '.join(tp_parts)}")
+                print(f"  錯誤預測信心 (FP Confidence): {', '.join(fp_parts)}")
             except Exception as e:
                 print(f"[WARN] Failed to compute target 2-class baseline: {e}")
         else:
