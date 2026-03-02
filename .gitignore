@@ -1,4 +1,5 @@
 CIFAR-10/
 BackdoorBox-badnets,refool/
+!BackdoorBox-badnets,refool/make_poisoned_attacktype_partition.py
 __pycache__/
 *.py[cod]
