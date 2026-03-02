@@ -13,7 +13,7 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
       clean/
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
   python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" --finetune_mode full
-  
+
 """
 
 import argparse

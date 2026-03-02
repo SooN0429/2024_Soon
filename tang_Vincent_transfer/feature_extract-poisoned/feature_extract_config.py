@@ -12,7 +12,7 @@
 # input_root：僅放「父目錄」，底下需有 train_source、train_target；程式依 --domain 選用其一。
 # 來源/目標專用設定（樣本數等）請用 SOURCE_EXTRACT_PROFILE / TARGET_EXTRACT_PROFILE。
 FEATURE_EXTRACT_CFG = {
-    "input_root": "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10",
+    "input_root": "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1",
     "output_root": "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_",
     "seed": 42,  # 隨機種子(挑選抽取特徵的樣本用的隨機種子)
     "batch_size": 32,
