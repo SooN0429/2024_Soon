@@ -108,8 +108,17 @@ def build_badnets_pattern_weight(
     elif trigger_position == "top_left":
         pattern[0, :trigger_size, :trigger_size] = int(trigger_value)
         weight[0, :trigger_size, :trigger_size] = 1.0
+    elif trigger_position == "top_right":
+        pattern[0, :trigger_size, -trigger_size:] = int(trigger_value)
+        weight[0, :trigger_size, -trigger_size:] = 1.0
+    elif trigger_position == "bottom_left":
+        pattern[0, -trigger_size:, :trigger_size] = int(trigger_value)
+        weight[0, -trigger_size:, :trigger_size] = 1.0
     else:
-        raise ValueError(f"Unsupported trigger_position: {trigger_position}. Use bottom_right or top_left.")
+        raise ValueError(
+            f"Unsupported trigger_position: {trigger_position}. "
+            "Use one of bottom_right, top_left, top_right, bottom_left."
+        )
     return pattern, weight
 
 
@@ -230,8 +239,8 @@ def main() -> None:
         "--badnets_trigger_position",
         type=str,
         default="bottom_right",
-        choices=("bottom_right", "top_left"),
-        help="BadNets trigger 位置",
+        choices=("bottom_right", "top_left", "top_right", "bottom_left", "random_corner"),
+        help="BadNets trigger 位置（或 random_corner：每張圖隨機落在四角之一）",
     )
     parser.add_argument("--badnets_trigger_value", type=float, default=255.0, help="BadNets trigger 數值")
     parser.add_argument("--refool_max_image_size", type=int, default=32, help="Refool max_image_size（CIFAR-10 保持 32）")
@@ -311,12 +320,14 @@ def main() -> None:
             (out_root / "_preview" / split_name / bucket).mkdir(parents=True, exist_ok=True)
 
     # BadNets trigger
-    pattern, weight = build_badnets_pattern_weight(
-        args.badnets_trigger_size,
-        args.badnets_trigger_position,
-        args.badnets_trigger_value,
-    )
-    badnets_trigger = AddDatasetFolderTrigger(pattern, weight)
+    badnets_trigger = None
+    if args.badnets_trigger_position != "random_corner":
+        pattern, weight = build_badnets_pattern_weight(
+            args.badnets_trigger_size,
+            args.badnets_trigger_position,
+            args.badnets_trigger_value,
+        )
+        badnets_trigger = AddDatasetFolderTrigger(pattern, weight)
 
     # Refool：載入反射圖並在 seed 已設下建立 applicator
     reflection_candidates: List[np.ndarray] = []
@@ -390,7 +401,19 @@ def main() -> None:
                     elif bucket == "badnets":
                         img = cv2.imread(str(src_path))
                         if img is not None:
-                            poisoned = badnets_trigger(img)  # returns (H,W,C) numpy
+                            if args.badnets_trigger_position == "random_corner":
+                                corner = rng.choice(
+                                    ("top_left", "top_right", "bottom_left", "bottom_right")
+                                )
+                                pattern, weight = build_badnets_pattern_weight(
+                                    args.badnets_trigger_size,
+                                    corner,
+                                    args.badnets_trigger_value,
+                                )
+                                trigger = AddDatasetFolderTrigger(pattern, weight)
+                                poisoned = trigger(img)  # returns (H,W,C) numpy
+                            else:
+                                poisoned = badnets_trigger(img)  # returns (H,W,C) numpy
                             cv2.imwrite(str(out_f), poisoned)
                             count_by_split_bucket[split_name][bucket] += 1
                             preview_candidates[split_name][bucket].append((src_path, out_f))
