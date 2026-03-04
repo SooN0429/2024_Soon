@@ -12,7 +12,7 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
       refool/
       clean/
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
-  python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" --finetune_mode full
+  python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" --finetune_mode full
 
 """
 
@@ -24,6 +24,7 @@ import sys
 from typing import List, Optional, Tuple
 
 import numpy as np
+import random
 import torch
 import torch.utils.data as Data
 from torch.utils.data import DataLoader
@@ -76,6 +77,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="features_*.npy",
         help="在每個子資料夾底下尋找特徵檔的樣式 (預設: features_*.npy)。",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="隨機種子（控制初始化與 DataLoader shuffle）。",
     )
     parser.add_argument(
         "--para_source",
@@ -155,6 +162,17 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     return parser.parse_args()
+
+
+def set_seed(seed: int) -> None:
+    """
+    設定 Python / NumPy / PyTorch 的隨機種子，方便做跨次實驗穩定度比較。
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 
 def load_features_from_root(
@@ -373,6 +391,8 @@ def evaluate_2class_checkpoint(
 
 def main() -> None:
     args = parse_args()
+    # 設定隨機種子，讓多次實驗結果更可重現
+    set_seed(args.seed)
     device = torch.device(args.device)
     print(f"[INFO] Using device: {device}")
     print(f"[INFO] backbone_init_mode = {args.backbone_init_mode}")

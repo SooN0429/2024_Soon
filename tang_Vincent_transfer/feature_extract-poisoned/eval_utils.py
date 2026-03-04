@@ -62,8 +62,7 @@ def evaluate_on_images_with_per_class(
         return 0.0, None
 
     overall_acc = (preds_cat == labels_cat).sum().item() / total
-
-    # TP/FP confidence: 僅正確/錯誤預測樣本的 max(P) 平均
+    # TP/FP confidence: 僅正確/錯誤預測樣本的 max(P) 平均（整體）
     correct_mask = preds_cat == labels_cat
     wrong_mask = preds_cat != labels_cat
     n_correct = correct_mask.sum().item()
@@ -75,6 +74,8 @@ def evaluate_on_images_with_per_class(
     if class_names and len(class_names) > 0:
         per_class_acc: Dict[str, float] = {}
         per_class_confidence: Dict[str, float] = {}
+        per_class_tp_confidence: Dict[str, float] = {}
+        per_class_fp_confidence: Dict[str, float] = {}
         for c in range(len(class_names)):
             mask = labels_cat == c
             n_c = mask.sum().item()
@@ -84,11 +85,23 @@ def evaluate_on_images_with_per_class(
             conf_c = confidences_cat[mask].mean().item()
             per_class_acc[class_names[c]] = acc_c
             per_class_confidence[class_names[c]] = conf_c
+            # 該類別的 TP：label=c 且 pred=c
+            tp_mask_c = (labels_cat == c) & (preds_cat == c)
+            n_tp_c = tp_mask_c.sum().item()
+            if n_tp_c > 0:
+                per_class_tp_confidence[class_names[c]] = confidences_cat[tp_mask_c].mean().item()
+            # 該類別的 FP：pred=c 且 label!=c（被誤判成此類別）
+            fp_mask_c = (preds_cat == c) & (labels_cat != c)
+            n_fp_c = fp_mask_c.sum().item()
+            if n_fp_c > 0:
+                per_class_fp_confidence[class_names[c]] = confidences_cat[fp_mask_c].mean().item()
         details = {
             "per_class_acc": per_class_acc,
             "per_class_confidence": per_class_confidence,
             "tp_confidence": tp_confidence,
             "fp_confidence": fp_confidence,
+            "per_class_tp_confidence": per_class_tp_confidence,
+            "per_class_fp_confidence": per_class_fp_confidence,
         }
 
     return overall_acc, details

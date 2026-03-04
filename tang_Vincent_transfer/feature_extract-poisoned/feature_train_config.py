@@ -29,7 +29,7 @@ TARGET_FEATURE_CFG = {
     "batch_size": 16,
     "lr": 0.0001,
     "epoch": 10,
-    "per_digit_k": 10,
+    "per_digit_k": 50,
     "log_interval": 1,
 }
 

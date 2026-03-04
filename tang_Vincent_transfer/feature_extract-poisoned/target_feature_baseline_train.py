@@ -21,7 +21,7 @@
 
     python target_feature_baseline_train.py \
       --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)/" \
-      --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10/test" \
+      --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
       --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt"
 
 features_dir 結構應與 source 類似，例如：
@@ -327,6 +327,16 @@ def main() -> None:
                 conf_parts = [f"{name}={details['per_class_confidence'][name]:.3f}" for name in details["per_class_confidence"]]
                 print(f"  Per-class acc: {', '.join(acc_parts)}")
                 print(f"  Per-class mean confidence: {', '.join(conf_parts)}")
+                # 各類別 TP/FP 平均信心
+                per_tp_conf = details.get("per_class_tp_confidence", {})
+                if per_tp_conf:
+                    tp_cls_parts = [f"{name}={per_tp_conf[name]:.3f}" for name in per_tp_conf]
+                    print(f"  Per-class TP confidence: {', '.join(tp_cls_parts)}")
+                per_fp_conf = details.get("per_class_fp_confidence", {})
+                if per_fp_conf:
+                    fp_cls_parts = [f"{name}={per_fp_conf[name]:.3f}" for name in per_fp_conf]
+                    print(f"  Per-class FP confidence: {', '.join(fp_cls_parts)}")
+                # 整體 TP/FP 平均信心
                 tp_val, fp_val = details.get("tp_confidence", float("nan")), details.get("fp_confidence", float("nan"))
                 tp_str = f"{tp_val:.3f}" if tp_val == tp_val else "N/A"
                 fp_str = f"{fp_val:.3f}" if fp_val == fp_val else "N/A"
