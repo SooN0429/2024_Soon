@@ -12,7 +12,17 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
       refool/
       clean/
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
-  python model3class.py   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth"   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth"   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)"   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test"   --para_source 0.5   --para_target 0.5   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" --finetune_mode full
+  
+python model3class.py \
+  --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth" \
+  --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth" \
+  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)" \
+  --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
+  --para_source 0.5 \
+  --para_target 0.5 \
+  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" \
+  --finetune_mode head_only \
+  --seed 1
 
 """
 
@@ -416,6 +426,24 @@ def main() -> None:
         )
     n_class_fusion = num_classes_tgt
 
+    # 建立來源與目標模型類別名稱的 union，作為最終 head 的類別空間
+    src_names = ckpt_src.get("class_names", [])
+    tgt_names = ckpt_tgt.get("class_names", [])
+    if not isinstance(src_names, list) or not isinstance(tgt_names, list):
+        raise ValueError("Both source and target checkpoints must contain 'class_names' as a list.")
+
+    union_names: List[str] = []
+    for name in src_names:
+        if name not in union_names:
+            union_names.append(name)
+    for name in tgt_names:
+        if name not in union_names:
+            union_names.append(name)
+    class_name_to_union_idx = {name: idx for idx, name in enumerate(union_names)}
+    num_classes_union = len(union_names)
+
+    print(f"[INFO] union class_names (source ∪ target) = {union_names}")
+
     # 2. 載入 target 特徵
     print(f"[INFO] Loading target features from: {args.feature_root}")
     features, labels, class_names, detected_layer = load_features_from_root(
@@ -423,11 +451,25 @@ def main() -> None:
     )
     print(f"[INFO] Target features shape = {features.shape}, classes = {class_names}")
 
-    num_classes = len(class_names)
-    n_class_cfg = CFG.get("n_class", num_classes)
-    if num_classes != n_class_cfg:
+    # 將 feature_root 子資料夾映射到 union 類別空間的 index
+    missing_in_union = [name for name in class_names if name not in class_name_to_union_idx]
+    if missing_in_union:
+        raise ValueError(
+            f"The following feature classes are not present in union class_names derived from "
+            f"source/target checkpoints: {missing_in_union}. "
+            f"Please ensure feature_root subdirectories match source/target class_names."
+        )
+    remap = {old_idx: class_name_to_union_idx[name] for old_idx, name in enumerate(class_names)}
+    labels_remapped = labels.copy()
+    for old_idx, new_idx in remap.items():
+        labels_remapped[labels == old_idx] = new_idx
+    labels = labels_remapped
+
+    num_feature_classes = len(class_names)
+    n_class_cfg = CFG.get("n_class", num_feature_classes)
+    if num_feature_classes != n_class_cfg:
         print(
-            f"[WARN] Using num_classes={num_classes} (from data), "
+            f"[WARN] Using num_classes={num_feature_classes} (from data), "
             f"CFG n_class={n_class_cfg} overridden for this run."
         )
 
@@ -517,7 +559,7 @@ def main() -> None:
         model_2.load_state_dict(ckpt_tgt["state_dict"], strict=False)
         model_2 = model_2.to(device)
 
-        model = models.Transfer_Net(num_classes)
+        model = models.Transfer_Net(num_classes_union)
         model = model.to(device)
 
         state_1 = model_1.state_dict()
@@ -547,7 +589,7 @@ def main() -> None:
 
         src_state = ckpt_sel["state_dict"]
 
-        model = models.Transfer_Net(num_classes)
+        model = models.Transfer_Net(num_classes_union)
         model = model.to(device)
 
         dst_state = model.state_dict()
@@ -562,9 +604,9 @@ def main() -> None:
         )
 
     else:
-        # scratch：完全不載入任何 checkpoint，隨機初始化 3 類模型
+        # scratch：完全不載入任何 checkpoint，隨機初始化模型（使用 union 類別空間）
         print("[INFO] Initializing model from scratch (no pretrained checkpoint).")
-        model = models.Transfer_Net(num_classes)
+        model = models.Transfer_Net(num_classes_union)
         model = model.to(device)
 
     # 4. 構建 DataLoader、Optimizer、Scheduler、Loss
@@ -603,7 +645,7 @@ def main() -> None:
     criterion = LS.LabelSmoothingCrossEntropy(reduction="sum")
 
     print(f"[INFO] Building target image DataLoader from: {args.eval_image_root}")
-    attack_types = class_names
+    attack_types = union_names
     image_loader = build_attack_balanced_test_loader(
         root=args.eval_image_root,
         batch_size=args.batch_size,
@@ -627,7 +669,7 @@ def main() -> None:
             model=model,
             loader=image_loader,
             device=device,
-            class_names=class_names,
+            class_names=union_names,
         )
         if acc > best_acc:
             best_acc = acc
@@ -636,7 +678,7 @@ def main() -> None:
                 f"[Epoch {epoch:03d}/{args.epoch:03d}] "
                 f"train_loss={train_loss:.6f}, eval_acc={acc*100:.2f}% (best={best_acc*100:.2f}%)"
             )
-            for name in class_names:
+            for name in union_names:
                 tp_str = f"{per_class_tp_conf[name]:.4f}" if per_class_tp_conf[name] is not None else "N/A"
                 fp_str = f"{per_class_fp_conf[name]:.4f}" if per_class_fp_conf[name] is not None else "N/A"
                 print(
@@ -652,9 +694,9 @@ def main() -> None:
         torch.save(
             {
                 "state_dict": model.state_dict(),
-                "class_names": class_names,
+                "class_names": union_names,
                 "extracted_layer": extracted_layer,
-                "num_classes": num_classes,
+                "num_classes": num_classes_union,
                 "para_source": args.para_source,
                 "para_target": args.para_target,
                 "backbone_init_mode": args.backbone_init_mode,
