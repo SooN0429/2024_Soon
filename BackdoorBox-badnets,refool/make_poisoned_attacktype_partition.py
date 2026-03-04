@@ -11,7 +11,23 @@ Partition 式 Attack-Type 資料集生成腳本
 退出虛擬環境後，執行指令： deactivate
 
 指令範例：(路徑改成自己的) 
-python make_poisoned_attacktype_partition.py --pair_root pic_pair --global_root pic_global --out_root pic_poisoned --num_parts 5 --alloc "clean=1,badnets=1,refool=1,reserve=2" --reflection_root pic_reflection --n_reflections 1 --badnets_trigger_size 3 --badnets_trigger_position bottom_right --badnets_trigger_value 255.0 --refool_max_image_size 32 --refool_ghost_rate 0.49 --refool_alpha_b -1.0 --refool_offset 0,0 --refool_sigma -1.0 --refool_ghost_alpha -1.0
+python make_poisoned_attacktype_partition.py \
+  --pair_root "/media/user906/ADATA HV620S/lab/CIFAR-10/pic_pair" \
+  --global_root "/media/user906/ADATA HV620S/lab/CIFAR-10/pic_global" \
+  --out_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1" \
+  --num_parts 5 \
+  --alloc "clean=1,badnets=1,refool=1,reserve=2" \
+  --reflection_root "/home/user906/2024_Soon/BackdoorBox-badnets,refool/refool_reflection_images" \
+  --n_reflections 1 \
+  --badnets_trigger_size 3 \
+  --badnets_trigger_position random_corner \
+  --badnets_trigger_value 255.0 \
+  --refool_max_image_size 32 \
+  --refool_ghost_rate 0.49 \
+  --refool_alpha_b -1.0 \
+  --refool_offset "0,0" \
+  --refool_sigma -1.0 \
+  --refool_ghost_alpha -1.0
 
 各參數說明：
 --pair_root：源資料集路徑
