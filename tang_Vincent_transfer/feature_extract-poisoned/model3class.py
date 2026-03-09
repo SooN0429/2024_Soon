@@ -23,7 +23,6 @@ python model3class.py \
   --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" \
   --finetune_mode head_only \
   --seed 1
-
 """
 
 import argparse
@@ -452,7 +451,7 @@ def main() -> None:
     print(f"[INFO] Target features shape = {features.shape}, classes = {class_names}")
 
     # 將 feature_root 子資料夾映射到 union 類別空間的 index
-    missing_in_union = [name for name in class_names if name not in class_name_to_union_idx]
+    missing_in_union = [name for name in class_names if name not in class_name_to_union_idx] 
     if missing_in_union:
         raise ValueError(
             f"The following feature classes are not present in union class_names derived from "
