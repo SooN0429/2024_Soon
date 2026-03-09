@@ -15,7 +15,7 @@
   - attack_types：由 feature_root 子資料夾名稱自動決定，確保訓練 / 測試類別一致
   - save_model_path：指定訓練模型根目錄 (例如 .../trained_model_cpt)，實際檔案會存為 trained_model_cpt/target/target_<class1>_<class2>.pth
 
-依賴 O2M 模組：models, config, backbone_multi, call_resnet18_multi, LabelSmoothing。
+依賴 O2M 模組：models, config, backbone_multi, call_resnet18_multi, LabelSmoothing，與 CL_MAL-main 中對應的 models 系列。
 
 使用方式範例：
 
@@ -35,6 +35,7 @@ features_dir 結構應與 source 類似，例如：
 
 import argparse
 import glob
+import importlib
 import os
 import re
 import sys
@@ -46,11 +47,15 @@ import torch.utils.data as Data
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-# 使用與 source_feature_model_train.py 同一套模型與設定（O2M）
+# 使用與 source_feature_model_train.py 同一套模型與設定（O2M），並支援學長 CL_MAL-main 的 models 系列
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_CL_MAL_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "CL_MAL-main"))
 _O2M_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, "..", "O2M"))
+if _CL_MAL_DIR not in sys.path:
+    # 優先使用 CL_MAL-main 的 models* 定義
+    sys.path.insert(0, _CL_MAL_DIR)
 if _O2M_DIR not in sys.path:
-    sys.path.insert(0, _O2M_DIR)
+    sys.path.insert(1, _O2M_DIR)
 
 import backbone_multi
 import call_resnet18_multi  # noqa: F401 - 供 models 使用
@@ -128,6 +133,17 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="運算裝置，cuda 或 cpu。",
+    )
+    parser.add_argument(
+        "--model_class",
+        type=str,
+        default="models",
+        help=(
+            "用於建構 Transfer_Net 的模組名，與 model3class_fusion2025 的 "
+            "--source_model_class / --target_model_class 對應。"
+            " 常見：models、models1、models1_1、models1_2、models2、models2_1、models2_2、"
+            "models3、models3_1、models3_2、models4、models4_1、models4_2。目標端做異構融合時可選擇與來源不同的架構。"
+        ),
     )
     return parser.parse_args()
 
@@ -268,9 +284,14 @@ def main() -> None:
             f"CFG n_class={n_class} overridden for this run."
         )
 
+    # 依 args.model_class 動態載入模組並取得 Transfer_Net（優先使用 CL_MAL-main，其次 O2M；與 model3class_fusion2025 的 --target_model_class 對應）
+    mod = importlib.import_module(args.model_class)
+    Transfer_Net = mod.Transfer_Net
+    print(f"[INFO] model_class = {args.model_class}")
+
     train_loader = build_feature_dataloader(features, labels, args.batch_size)
 
-    model = models.Transfer_Net(n_class)
+    model = Transfer_Net(n_class)
     model = model.to(device)
 
     optimizer = torch.optim.Adam(
@@ -355,6 +376,7 @@ def main() -> None:
                 "class_names": class_names,
                 "extracted_layer": extracted_layer,
                 "num_classes": num_classes,
+                "model_class": args.model_class,
             },
             save_path,
         )
