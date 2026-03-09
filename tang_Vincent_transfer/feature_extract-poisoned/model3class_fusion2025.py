@@ -5,6 +5,22 @@ model3class_fusion2025.py
 模型融合（2025 風格）→ 目標端特徵微調 → 影像評估 → 儲存。
 融合方式參考 model_fusion_2025.py：頭/尾層 align_heterogeneous_layers，conv_M2 statistical_alignment_fusion。
 使用 O2M 的 models / models1 與 backbone_multi，預設 target=models1、source=models 以支援異構融合。
+
+指令範例：
+python model3class_fusion2025.py \
+  --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth" \
+  --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth" \
+  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)" \
+  --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
+  --fusion_layers all \
+  --fusion_alpha 0.5 \
+  --fusion_beta 0.5 \
+  --statistical_method repair \
+  --save_model_path "/path/to/M2O_3class_fusion2025.pth" \
+  --finetune_mode full \
+  --epoch 25 \
+  --seed 1
+
 """
 
 from __future__ import annotations
@@ -63,18 +79,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--finetune_mode", type=str, default="full", choices=["full", "head_only"])
 
-    # 模型架構（支援異構）：預設 target=models1, source=models
+    # 模型架構（支援異構）：若未指定，將優先從 checkpoint 的 model_class 自動推斷
     parser.add_argument(
         "--target_model_class",
         type=str,
-        default="models1",
-        help="目標端 Transfer_Net 所在模組名（O2M 下），預設 models1",
+        default=None,
+        help="目標端 Transfer_Net 所在模組名（O2M 下）。若不指定，將優先使用 target checkpoint 內的 model_class，否則回退為 'models1'。",
     )
     parser.add_argument(
         "--source_model_class",
         type=str,
-        default="models",
-        help="來源端 Transfer_Net 所在模組名（O2M 下），預設 models",
+        default=None,
+        help="來源端 Transfer_Net 所在模組名（O2M 下）。若不指定，將優先使用 source checkpoint 內的 model_class，否則回退為 'models'。",
     )
 
     # 融合參數（對應 model_fusion_2025）
@@ -333,16 +349,9 @@ def main() -> None:
     args = parse_args()
     set_seed(args.seed)
     device = torch.device(args.device)
-    print(f"[INFO] device={device}, target_model_class={args.target_model_class}, source_model_class={args.source_model_class}")
-    print(f"[INFO] fusion_layers={args.fusion_layers}, finetune_mode={args.finetune_mode}")
+    print(f"[INFO] device={device}")
 
-    # 動態載入 O2M 的 models / models1
-    mod_target = importlib.import_module(args.target_model_class)
-    mod_source = importlib.import_module(args.source_model_class)
-    TransferNetTarget = mod_target.Transfer_Net
-    TransferNetSource = mod_source.Transfer_Net
-
-    # 1. 載入 checkpoints
+    # 1. 載入 checkpoints（也用來自動推斷 model_class）
     print(f"[INFO] Loading source: {args.source_model_path}")
     ckpt_src = torch.load(args.source_model_path, map_location=device)
     num_classes_src = ckpt_src.get("num_classes", len(ckpt_src.get("class_names", [])) or 2)
@@ -352,6 +361,46 @@ def main() -> None:
     ckpt_tgt = torch.load(args.target_model_path, map_location=device)
     num_classes_tgt = ckpt_tgt.get("num_classes", len(ckpt_tgt.get("class_names", [])) or 2)
     extracted_layer_tgt = ckpt_tgt.get("extracted_layer")
+
+    # 1.1 從 checkpoint 自動推斷 model_class，除非使用者明確指定
+    src_model_class_ckpt = ckpt_src.get("model_class")
+    tgt_model_class_ckpt = ckpt_tgt.get("model_class")
+
+    if args.source_model_class is None:
+        if src_model_class_ckpt is not None:
+            args.source_model_class = src_model_class_ckpt
+            print(f"[INFO] Auto-detected source_model_class from checkpoint: {args.source_model_class}")
+        else:
+            raise RuntimeError(
+                "來源端 checkpoint 未包含 'model_class' 欄位。\n"
+                "請確認該檔案是由 source_feature_model_train.py 產生，"
+                "或重新以正確的 model_class 訓練來源模型，"
+                "也可以在指令中手動指定 --source_model_class。"
+            )
+
+    if args.target_model_class is None:
+        if tgt_model_class_ckpt is not None:
+            args.target_model_class = tgt_model_class_ckpt
+            print(f"[INFO] Auto-detected target_model_class from checkpoint: {args.target_model_class}")
+        else:
+            raise RuntimeError(
+                "目標端 checkpoint 未包含 'model_class' 欄位。\n"
+                "請確認該檔案是由 target_feature_baseline_train.py 產生，"
+                "或重新以正確的 model_class 訓練目標端 baseline，"
+                "也可以在指令中手動指定 --target_model_class。"
+            )
+
+    print(
+        f"[INFO] target_model_class={args.target_model_class}, "
+        f"source_model_class={args.source_model_class}"
+    )
+    print(f"[INFO] fusion_layers={args.fusion_layers}, finetune_mode={args.finetune_mode}")
+
+    # 1.2 動態載入 O2M / CL_MAL 的 models / models1（此時已決定最終使用的 model_class）
+    mod_target = importlib.import_module(args.target_model_class)
+    mod_source = importlib.import_module(args.source_model_class)
+    TransferNetTarget = mod_target.Transfer_Net
+    TransferNetSource = mod_source.Transfer_Net
 
     n_class_fusion = max(num_classes_src, num_classes_tgt)
     if num_classes_src != num_classes_tgt:

@@ -20,9 +20,10 @@
 使用方式範例：
 
     python target_feature_baseline_train.py \
-      --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)/" \
+      --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(badnets_clean)/" \
       --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
-      --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt"
+      --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/model1"\
+      --model_class models1
 
 features_dir 結構應與 source 類似，例如：
 
@@ -291,7 +292,7 @@ def main() -> None:
 
     train_loader = build_feature_dataloader(features, labels, args.batch_size)
 
-    model = Transfer_Net(n_class)
+    model = Transfer_Net(n_class) # 
     model = model.to(device)
 
     optimizer = torch.optim.Adam(
