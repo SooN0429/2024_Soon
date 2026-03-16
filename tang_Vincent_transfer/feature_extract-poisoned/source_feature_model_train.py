@@ -41,7 +41,8 @@
 python source_feature_model_train.py \
   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/source/Source_train_2class(badnets_clean)" \
   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
-  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt"
+  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models" \
+  --model_class models
 
 """
 
@@ -313,7 +314,7 @@ def main() -> None:
 
     train_loader = build_feature_dataloader(features, labels, args.batch_size)
 
-    # 與學姊一致：Transfer_Net + 同一組 optimizer / scheduler / criterion
+    # 與學長一致：Transfer_Net + 同一組 optimizer / scheduler / criterion
     model = Transfer_Net(n_class)
     model = model.to(device)
 

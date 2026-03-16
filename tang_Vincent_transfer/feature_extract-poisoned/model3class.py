@@ -14,14 +14,14 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
   
 python model3class.py \
-  --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth" \
-  --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth" \
-  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)" \
+  --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/source/source_badnets_clean.pth" \
+  --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target/target_clean_refool.pth" \
+  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)" \
   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
   --para_source 0.5 \
   --para_target 0.5 \
-  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target_AfterFusion/M2O_3class_para05_05.pth" \
-  --finetune_mode head_only \
+  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target_AfterFusion/M2O_3class_para05_05_full_with_3classdata.pth" \
+  --finetune_mode full \
   --seed 1
 """
 
@@ -700,6 +700,8 @@ def main() -> None:
                 "para_target": args.para_target,
                 "backbone_init_mode": args.backbone_init_mode,
                 "finetune_mode": args.finetune_mode,
+                # 保留最終模型所使用的架構模組名稱（目前為 models.Transfer_Net）半寫死的，這個腳本原則上是進行同構融合，所以模型架構固定為models。
+                "model_class": getattr(models, "__name__", "models"),
             },
             args.save_model_path,
         )

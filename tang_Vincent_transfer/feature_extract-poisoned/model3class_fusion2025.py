@@ -8,15 +8,15 @@ model3class_fusion2025.py
 
 指令範例：
 python model3class_fusion2025.py \
-  --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/source/source_badnets_clean.pth" \
-  --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/target/target_clean_refool.pth" \
-  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)" \
+  --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/source/source_badnets_clean.pth" \
+  --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/model1/target/target_clean_refool.pth" \
+  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)" \
   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
   --fusion_layers all \
   --fusion_alpha 0.5 \
   --fusion_beta 0.5 \
   --statistical_method repair \
-  --save_model_path "/path/to/M2O_3class_fusion2025.pth" \
+  --save_model_path "/media/user906/ADATA HV620S/lab/fusion_2025_trained_cpt/sameclass_fusion2025.pth" \
   --finetune_mode full \
   --epoch 25 \
   --seed 1
@@ -231,6 +231,46 @@ def evaluate_on_images_detailed(model, loader: DataLoader, device: torch.device,
     return overall_acc, per_class_acc, per_class_tp_conf, per_class_fp_conf
 
 
+@torch.no_grad()
+def evaluate_baseline_checkpoint(
+    ckpt,
+    TransferNetCls,
+    class_names: List[str],
+    args,
+    device: torch.device,
+    label: str,
+) -> None:
+    """
+    在 target 影像測試集上評估原始 2 類 / 多類 checkpoint 的 baseline 表現，
+    並列印各類別準確率與 TP/FP 平均信心。
+    """
+    print(f"[INFO] 評估 {label} baseline（classes={class_names}）於 target 測試集上")
+
+    image_loader = build_attack_balanced_test_loader(
+        root=args.eval_image_root,
+        batch_size=args.batch_size,
+        attack_types=class_names,
+        per_digit_k=args.per_digit_k,
+    )
+
+    num_classes = ckpt.get("num_classes", len(ckpt.get("class_names", [])) or len(class_names) or 2)
+    model = TransferNetCls(num_classes).to(device)
+    model.load_state_dict(ckpt["state_dict"], strict=True)
+
+    acc, per_class_acc, per_class_tp_conf, per_class_fp_conf = evaluate_on_images_detailed(
+        model, image_loader, device, class_names
+    )
+
+    print(f"[BASELINE] {label} 在 target 測試集上的整體準確率 = {acc*100:.2f}%")
+    for name in class_names:
+        acc_c = per_class_acc.get(name, 0.0)
+        tp = per_class_tp_conf.get(name)
+        fp = per_class_fp_conf.get(name)
+        tp_s = f"{tp:.4f}" if tp is not None else "N/A"
+        fp_s = f"{fp:.4f}" if fp is not None else "N/A"
+        print(f"  [{name}] acc={acc_c:.2f}%, TP_conf={tp_s}, FP_conf={fp_s}")
+
+
 def run_fusion(
     model_0,
     model_1,
@@ -431,9 +471,45 @@ def main() -> None:
         labels_remapped[labels == old_idx] = new_idx
     labels = labels_remapped
 
-    # 4. extracted_layer
+    # 4. extracted_layer（比照 model3class：在建立 / 評估任何模型前先設定 backbone_multi.extracted_layer）
     extracted_layer = extracted_layer_tgt or extracted_layer_src or detected_layer or "7_point"
+    if not extracted_layer_tgt and not extracted_layer_src and detected_layer:
+        print(f"[INFO] Using extracted_layer from feature filename: {detected_layer}")
+    if extracted_layer is None:
+        extracted_layer = "7_point"
+        print(f"[WARN] Using default extracted_layer: {extracted_layer}")
     backbone_multi.extracted_layer = extracted_layer
+
+    # 4.1 在融合與微調前，先評估來源端 / 目標端的 baseline 表現（若 class_names 可用）
+    if isinstance(src_names, list) and len(src_names) >= 2:
+        try:
+            evaluate_baseline_checkpoint(
+                ckpt=ckpt_src,
+                TransferNetCls=TransferNetSource,
+                class_names=src_names,
+                args=args,
+                device=device,
+                label="來源端模型（source checkpoint）",
+            )
+        except Exception as e:
+            print(f"[WARN] 無法計算來源端 baseline：{e}")
+    else:
+        print("[WARN] 來源端 checkpoint 缺少 class_names 或類別數過少，略過 baseline 評估。")
+
+    if isinstance(tgt_names, list) and len(tgt_names) >= 2:
+        try:
+            evaluate_baseline_checkpoint(
+                ckpt=ckpt_tgt,
+                TransferNetCls=TransferNetTarget,
+                class_names=tgt_names,
+                args=args,
+                device=device,
+                label="目標端模型（target checkpoint）",
+            )
+        except Exception as e:
+            print(f"[WARN] 無法計算目標端 baseline：{e}")
+    else:
+        print("[WARN] 目標端 checkpoint 缺少 class_names 或類別數過少，略過 baseline 評估。")
 
     # 5. 建立 model_0（target）、model_1（source），載入權重
     model_0 = TransferNetTarget(n_class_fusion).to(device)
