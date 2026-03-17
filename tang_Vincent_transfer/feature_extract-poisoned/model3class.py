@@ -20,8 +20,8 @@ python model3class.py \
   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
   --para_source 0.5 \
   --para_target 0.5 \
-  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target_AfterFusion/M2O_3class_para05_05_full_with_3classdata.pth" \
-  --finetune_mode full \
+  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target_AfterFusion/M2O_3class_para05_05_bottle_cls_with_3classdata.pth" \
+  --finetune_mode bottle_cls \
   --seed 1
 """
 
@@ -164,10 +164,11 @@ def parse_args() -> argparse.Namespace:
         "--finetune_mode",
         type=str,
         default="full",
-        choices=["full", "head_only"],
+        choices=["full", "head_only", "bottle_cls"],
         help=(
             "微調模式：'full' = 整個模型微調（預設）；"
-            "'head_only' = 僅微調 3 類分類頭（backbone、bottle 凍結）。"
+        "'head_only' = 僅微調 3 類分類頭（backbone、bottle 凍結）；"
+        "'bottle_cls' = 僅微調 bottle layer + 3 類分類頭（backbone 凍結）。"
         ),
     )
     return parser.parse_args()
@@ -621,6 +622,22 @@ def main() -> None:
         print("[INFO] finetune_mode = head_only: 僅訓練 classifier_layer，backbone 與 bottle 已凍結。")
         optimizer = torch.optim.Adam(
             [{"params": model.classifier_layer.parameters(), "lr": 10 * args.lr}],
+            lr=args.lr,
+            betas=CFG["betas"],
+            weight_decay=CFG["l2_decay"],
+        )
+    elif args.finetune_mode == "bottle_cls":
+        for p in model.base_network.parameters():
+            p.requires_grad = False
+        for p in model.base_network.avgpool.parameters():
+            p.requires_grad = False
+        # 只開放 bottle_layer + classifier_layer
+        print("[INFO] finetune_mode = bottle_cls: 僅訓練 bottle_layer + classifier_layer，backbone 已凍結。")
+        optimizer = torch.optim.Adam(
+            [
+                {"params": model.bottle_layer.parameters(), "lr": 10 * args.lr},
+                {"params": model.classifier_layer.parameters(), "lr": 10 * args.lr},
+            ],
             lr=args.lr,
             betas=CFG["betas"],
             weight_decay=CFG["l2_decay"],
