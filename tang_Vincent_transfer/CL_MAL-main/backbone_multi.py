@@ -387,6 +387,7 @@ class resnet18_multi(nn.Module):
         elif extracted_layer == "8_point":
             self.avgpool = nn.AvgPool2d(7, stride=1)
             convm2_list = [conv_M2(512, 320)]
+        # 這邊(extracted_layer)之所有有建立convM2的資訊，是因為convM2的第一個參數是輸入通道，而extracted_layer是決定輸入通道的數量
         # att_list = [att.eca_layer(128)]
         # #tt_list = [GCT.GCT(128)]
         # att_list2 = [GCT.GCT(320)]
@@ -396,7 +397,7 @@ class resnet18_multi(nn.Module):
 
         #convm3_list = [conv_M3(320, 704)]
         #convm3_list_2 = [conv_M3(704,704)]
-        self.convm2_layer = nn.Sequential(*convm2_list)
+        self.convm2_layer = nn.Sequential(*convm2_list) # 通過先前convM2_list建立的通道數量來建立convM2_layer(conv2_list會呼叫convM2)，此時的convM2_list已帶有正確通道數量
         # self.att_layer = nn.Sequential(*att_list)
         # self.att_layer2 = nn.Sequential(*att_list2)
 

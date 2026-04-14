@@ -10,7 +10,7 @@ model3class_fusion2025.py
 python model3class_fusion2025.py \
   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/source/source_badnets_clean.pth" \
   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/model1/target/target_clean_refool.pth" \
-  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)" \
+  --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_2class(refool_clean)" \
   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
   --fusion_layers all \
   --fusion_alpha 0.5 \
@@ -196,8 +196,8 @@ def evaluate_on_images_detailed(model, loader: DataLoader, device: torch.device,
     class_total = [0] * num_classes
     tp_conf_sum = [0.0] * num_classes
     tp_count = [0] * num_classes
-    fp_conf_sum = [0.0] * num_classes
-    fp_count = [0] * num_classes
+    fn_conf_sum = [0.0] * num_classes
+    fn_count = [0] * num_classes
     for images, labels in loader:
         images, labels = images.to(device), labels.to(device)
         logits = model.predict(images, test_flag)
@@ -214,21 +214,21 @@ def evaluate_on_images_detailed(model, loader: DataLoader, device: torch.device,
                 tp_conf_sum[c] += conf
                 tp_count[c] += 1
             else:
-                fp_conf_sum[c] += conf
-                fp_count[c] += 1
+                fn_conf_sum[c] += conf
+                fn_count[c] += 1
     total_correct = sum(class_correct)
     total_samples = sum(class_total)
     overall_acc = total_correct / total_samples if total_samples else 0.0
     per_class_acc = {}
     per_class_tp_conf = {}
-    per_class_fp_conf = {}
+    per_class_fn_conf = {}
     for c in range(num_classes):
         name = class_names[c]
         n = class_total[c]
         per_class_acc[name] = (class_correct[c] / n * 100.0) if n else 0.0
         per_class_tp_conf[name] = (tp_conf_sum[c] / tp_count[c]) if tp_count[c] else None
-        per_class_fp_conf[name] = (fp_conf_sum[c] / fp_count[c]) if fp_count[c] else None
-    return overall_acc, per_class_acc, per_class_tp_conf, per_class_fp_conf
+        per_class_fn_conf[name] = (fn_conf_sum[c] / fn_count[c]) if fn_count[c] else None
+    return overall_acc, per_class_acc, per_class_tp_conf, per_class_fn_conf
 
 
 @torch.no_grad()
@@ -242,7 +242,7 @@ def evaluate_baseline_checkpoint(
 ) -> None:
     """
     在 target 影像測試集上評估原始 2 類 / 多類 checkpoint 的 baseline 表現，
-    並列印各類別準確率與 TP/FP 平均信心。
+    並列印各類別準確率與 TP/FN 平均信心（FN 為真實為該類但預測錯的信心）。
     """
     print(f"[INFO] 評估 {label} baseline（classes={class_names}）於 target 測試集上")
 
@@ -257,7 +257,7 @@ def evaluate_baseline_checkpoint(
     model = TransferNetCls(num_classes).to(device)
     model.load_state_dict(ckpt["state_dict"], strict=True)
 
-    acc, per_class_acc, per_class_tp_conf, per_class_fp_conf = evaluate_on_images_detailed(
+    acc, per_class_acc, per_class_tp_conf, per_class_fn_conf = evaluate_on_images_detailed(
         model, image_loader, device, class_names
     )
 
@@ -265,10 +265,10 @@ def evaluate_baseline_checkpoint(
     for name in class_names:
         acc_c = per_class_acc.get(name, 0.0)
         tp = per_class_tp_conf.get(name)
-        fp = per_class_fp_conf.get(name)
+        fn = per_class_fn_conf.get(name)
         tp_s = f"{tp:.4f}" if tp is not None else "N/A"
-        fp_s = f"{fp:.4f}" if fp is not None else "N/A"
-        print(f"  [{name}] acc={acc_c:.2f}%, TP_conf={tp_s}, FP_conf={fp_s}")
+        fn_s = f"{fn:.4f}" if fn is not None else "N/A"
+        print(f"  [{name}] acc={acc_c:.2f}%, TP_conf={tp_s}, FN_conf={fn_s}")
 
 
 def run_fusion(
@@ -575,7 +575,7 @@ def main() -> None:
     for epoch in range(1, args.epoch + 1):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
         scheduler.step()
-        acc, per_class_acc, per_class_tp, per_class_fp = evaluate_on_images_detailed(
+        acc, per_class_acc, per_class_tp, per_class_fn = evaluate_on_images_detailed(
             model, image_loader, device, union_names
         )
         if acc > best_acc:
@@ -584,8 +584,8 @@ def main() -> None:
             print(f"[Epoch {epoch:03d}/{args.epoch:03d}] train_loss={train_loss:.6f}, eval_acc={acc*100:.2f}% (best={best_acc*100:.2f}%)")
             for name in union_names:
                 tp_s = f"{per_class_tp[name]:.4f}" if per_class_tp[name] is not None else "N/A"
-                fp_s = f"{per_class_fp[name]:.4f}" if per_class_fp[name] is not None else "N/A"
-                print(f"  [{name}] acc={per_class_acc[name]:.2f}%, TP_conf={tp_s}, FP_conf={fp_s}")
+                fn_s = f"{per_class_fn[name]:.4f}" if per_class_fn[name] is not None else "N/A"
+                print(f"  [{name}] acc={per_class_acc[name]:.2f}%, TP_conf={tp_s}, FN_conf={fn_s}")
 
     # 10. 儲存
     if args.save_model_path:

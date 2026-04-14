@@ -12,16 +12,22 @@ M2O 特徵轉移訓練腳本（3 類 baseline 版本）
       refool/
       clean/
   → num_classes = 3，logit index 對應 sorted(os.listdir(feature_root)) 的順序。
-  
-python model3class.py \
+
+新增參數功能：
+--classifier_init_mode random \ # 分類層的初始化方式
+--fusion_backbone_mode full_backbone \ # 決定模型中哪個部分使用學長的通道對齊與統計對齊
+
+python model3class_classifier.py \
   --source_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/source/source_badnets_clean.pth" \
   --target_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target/target_clean_refool.pth" \
   --feature_root "/media/user906/ADATA HV620S/lab/feature_poisoned_cifar-10_/target/Target_train_3class(badnets_refool_clean)" \
   --eval_image_root "/media/user906/ADATA HV620S/lab/poisoned_Cifar-10_v1/test" \
   --para_source 0.5 \
   --para_target 0.5 \
-  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target_AfterFusion/M2O_3class_para05_05_full_with_3classdata.pth" \
-  --finetune_mode full \
+  --save_model_path "/media/user906/ADATA HV620S/lab/trained_model_cpt/models/target_AfterFusion/M2O_3class_para05_05_bottle_cls_with_3classdata.pth" \
+  --finetune_mode bottle_cls \
+  --classifier_init_mode from_ckpt \
+  --fusion_backbone_mode convM2_only \
   --seed 1
 """
 
@@ -53,6 +59,11 @@ import utils  # noqa: F401 - CFG/log 可能引用
 
 from feature_train_config import TARGET_FEATURE_CFG as TFCFG
 from feature_train_config import build_attack_balanced_test_loader
+
+from fusion_utils import (
+    choose_statistical_method,
+    statistical_alignment_fusion,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -171,7 +182,64 @@ def parse_args() -> argparse.Namespace:
         "'bottle_cls' = 僅微調 bottle layer + 3 類分類頭（backbone 凍結）。"
         ),
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--fusion_backbone_mode",
+        type=str,
+        default="convM2_only",
+        choices=["convM2_only", "full_backbone"],
+        help=(
+            "在 fusion 模式下，backbone 使用 2025-style statistical_alignment_fusion 的範圍："
+            "'convM2_only' = 僅對 base_network.convm2_layer.* 使用統計+通道對齊，其餘層線性加權；"
+            "'full_backbone' = 對整個 base_network.* 使用統計+通道對齊，bottle_layer / classifier_layer 維持線性加權。"
+        ),
+    )
+    parser.add_argument(
+        "--fusion_alpha",
+        type=float,
+        default=0.5,
+        help="2025-style 統計對齊的融合權重 alpha（僅在 fusion 模式有效）。",
+    )
+    parser.add_argument(
+        "--statistical_method",
+        type=str,
+        default="repair",
+        choices=["repair", "rescale", "original"],
+        help="statistical_alignment_fusion 的 repair_type。",
+    )
+    parser.add_argument(
+        "--adaptive_method",
+        type=str,
+        default="False",
+        help="若為 True，則每層透過 choose_statistical_method 自動決定 repair_type。",
+    )
+    parser.add_argument(
+        "--channel_similarity",
+        type=str,
+        default="True",
+        help="是否在 statistical_alignment_fusion 中啟用通道相似性對齊。",
+    )
+    parser.add_argument(
+        "--similarity_top_k",
+        type=float,
+        default=0.3,
+        help="通道相似度對齊時選取的 top-k 比例（例如 0.3 代表前 30%）。",
+    )
+    parser.add_argument(
+        "--classifier_init_mode",
+        type=str,
+        default="from_ckpt",
+        choices=["random", "from_ckpt"],
+        help=(
+            "3 類（或多類）分類頭的初始化方式："
+            "'random' = 保留隨機初始化；"
+            "'from_ckpt' = 依 source/target checkpoint 的 classifier_layer "
+            "及 class_names 進行列對齊與（必要時）取平均。"
+        ),
+    )
+    args = parser.parse_args()
+    args.adaptive_method = args.adaptive_method.lower() in ("true", "1", "yes")
+    args.channel_similarity = args.channel_similarity.lower() in ("true", "1", "yes")
+    return args
 
 
 def set_seed(seed: int) -> None:
@@ -401,6 +469,183 @@ def evaluate_2class_checkpoint(
     return acc, per_class_acc, per_class_conf, per_class_tp_conf, per_class_fn_conf
 
 
+def init_classifier_from_src_tgt(
+    model,
+    ckpt_src,
+    ckpt_tgt,
+    union_names: List[str],
+    device: torch.device,
+) -> None:
+    """
+    使用 source / target checkpoint 的 classifier_layer 來初始化目前 model 的 classifier_layer。
+
+    - 若某類別只在 source 中出現 → 用 source 對應 row（weight/bias 全複製）
+    - 若某類別只在 target 中出現 → 用 target 對應 row
+    - 若同時出現在 source 與 target → 該 row 取兩者平均
+
+    若遇到 union_names 中的類別在 source/target 的 class_names 都不存在，
+    視為嚴重錯誤，直接拋例外並以中文提示使用者。
+    """
+    src_names = ckpt_src.get("class_names", [])
+    tgt_names = ckpt_tgt.get("class_names", [])
+
+    if not isinstance(src_names, list) or not isinstance(tgt_names, list):
+        print("[WARN] 無法從 source/target 初始化分類層：'class_names' 欄位缺失或格式錯誤。")
+        return
+
+    state_src = ckpt_src.get("state_dict", {})
+    state_tgt = ckpt_tgt.get("state_dict", {})
+
+    w_src = state_src.get("classifier_layer.weight", None)
+    b_src = state_src.get("classifier_layer.bias", None)
+    w_tgt = state_tgt.get("classifier_layer.weight", None)
+    b_tgt = state_tgt.get("classifier_layer.bias", None)
+
+    if w_src is None or b_src is None or w_tgt is None or b_tgt is None:
+        print("[WARN] 無法從 source/target 初始化分類層：找不到 classifier_layer 的 weight/bias。")
+        return
+
+    if w_src.shape[0] != len(src_names) or w_tgt.shape[0] != len(tgt_names):
+        print(
+            "[WARN] 無法從 source/target 初始化分類層："
+            f"w_src.shape[0]={w_src.shape[0]}, len(src_names)={len(src_names)}, "
+            f"w_tgt.shape[0]={w_tgt.shape[0]}, len(tgt_names)={len(tgt_names)}。"
+        )
+        return
+
+    src_idx = {name: i for i, name in enumerate(src_names)}
+    tgt_idx = {name: i for i, name in enumerate(tgt_names)}
+
+    clf = model.classifier_layer
+    W = clf.weight.data.to(device)
+    b = clf.bias.data.to(device)
+
+    num_classes_union = len(union_names)
+    if W.shape[0] != num_classes_union:
+        print(
+            "[WARN] 無法從 source/target 初始化分類層："
+            f"model.classifier_layer.weight 的列數為 {W.shape[0]}，"
+            f"但 union 類別數為 {num_classes_union}。"
+        )
+        return
+
+    for u_idx, name in enumerate(union_names):
+        rows_w = []
+        rows_b = []
+
+        if name in src_idx:
+            idx_s = src_idx[name]
+            rows_w.append(w_src[idx_s].to(device))
+            rows_b.append(b_src[idx_s].to(device))
+
+        if name in tgt_idx:
+            idx_t = tgt_idx[name]
+            rows_w.append(w_tgt[idx_t].to(device))
+            rows_b.append(b_tgt[idx_t].to(device))
+
+        if not rows_w:
+            # 嚴重錯誤：union 中出現了來源端與目標端都沒有見過的「陌生類別」
+            raise RuntimeError(
+                "在建立 3 類分類頭時發現陌生類別："
+                f"'{name}' 不存在於 source 或 target checkpoint 的 class_names 中。\n"
+                "請確認：\n"
+                "1. source/target checkpoint 的 'class_names' 是否正確，且包含所有期望的類別名稱。\n"
+                "2. 若你有更改 feature_root 或類別命名，請確保與 source/target 的 class_names 一致。"
+            )
+
+        if len(rows_w) == 1:
+            W[u_idx].copy_(rows_w[0])
+            b[u_idx].copy_(rows_b[0])
+        else:
+            avg_w = sum(rows_w) / len(rows_w)
+            avg_b = sum(rows_b) / len(rows_b)
+            W[u_idx].copy_(avg_w)
+            b[u_idx].copy_(avg_b)
+
+    clf.weight.data.copy_(W)
+    clf.bias.data.copy_(b)
+    print("[INFO] 已根據 source/target checkpoint 的 class_names 初始化 classifier_layer。")
+
+
+def fuse_backbone_with_statistical_alignment(
+    model_src: models.Transfer_Net,
+    model_tgt: models.Transfer_Net,
+    model_out: models.Transfer_Net,
+    args,
+    device: torch.device,
+) -> None:
+    """
+    使用 2025-style statistical_alignment_fusion 對 backbone 權重做融合，並寫入 model_out。
+
+    - 若 fusion_backbone_mode = 'convM2_only'：
+        僅對 base_network.convm2_layer.* 的權重 / bias 使用 statistical_alignment_fusion，
+        其他 base_network.* 參數沿用現有線性加權 (para_source / para_target)。
+    - 若 fusion_backbone_mode = 'full_backbone'：
+        對所有 base_network.* 權重 / bias 使用 statistical_alignment_fusion，
+        其他層（bottle_layer / classifier_layer 等）維持線性加權。
+    """
+    state_src = model_src.state_dict()
+    state_tgt = model_tgt.state_dict()
+    state_out = model_out.state_dict()
+
+    fused_state = {}
+    for name, dst_param in state_out.items():
+        in_src = name in state_src
+        in_tgt = name in state_tgt
+
+        # 僅考慮同名同 shape 的參數，其餘直接保持 dst_param
+        if not (in_src and in_tgt):
+            fused_state[name] = dst_param.clone()
+            continue
+        src_param = state_src[name].to(device)
+        tgt_param = state_tgt[name].to(device)
+        if src_param.shape != tgt_param.shape or src_param.shape != dst_param.shape:
+            fused_state[name] = dst_param.clone()
+            continue
+
+        is_backbone = name.startswith("base_network.")
+        is_convm2 = "base_network.convm2_layer" in name and (
+            "weight" in name or "bias" in name
+        )
+
+        # 判斷是否要用 statistical_alignment_fusion
+        use_stat_fusion = False
+        if is_backbone:
+            if args.fusion_backbone_mode == "full_backbone":
+                use_stat_fusion = True
+            elif args.fusion_backbone_mode == "convM2_only" and is_convm2:
+                use_stat_fusion = True
+
+        if use_stat_fusion:
+            try:
+                method = (
+                    choose_statistical_method(name, src_param.shape, args.statistical_method)
+                    if args.adaptive_method
+                    else args.statistical_method
+                )
+                fused = statistical_alignment_fusion(
+                    src_param,
+                    tgt_param,
+                    alpha=args.fusion_alpha,
+                    eps=1e-5,
+                    repair_type=method,
+                    layer_name=name,
+                    enable_channel_similarity=args.channel_similarity,
+                    similarity_top_k=args.similarity_top_k,
+                )
+                fused_state[name] = fused.to(device)
+            except Exception as e:
+                print(f"[WARN] statistical_alignment_fusion 失敗 ({name})，改用線性加權：{e}")
+                fused_state[name] = (
+                    src_param * args.para_source + tgt_param * args.para_target
+                )
+        else:
+            # 預設：線性加權融合
+            fused_state[name] = src_param * args.para_source + tgt_param * args.para_target
+
+    model_out.load_state_dict(fused_state, strict=False)
+
+
 def main() -> None:
     args = parse_args()
     # 設定隨機種子，讓多次實驗結果更可重現
@@ -550,34 +795,32 @@ def main() -> None:
 
         print(
             f"[INFO] Fusing Transfer_Net with para_source={args.para_source}, "
-            f"para_target={args.para_target}"
+            f"para_target={args.para_target}, fusion_backbone_mode={args.fusion_backbone_mode}"
         )
-        # 與原本 M2O_feature_transfer_train.py 相同的融合流程
-        model_1 = models.Transfer_Net(n_class_fusion)
-        model_1.load_state_dict(ckpt_src["state_dict"], strict=False)
-        model_1 = model_1.to(device)
+        # 先建立 2 類的 source/target 模型
+        model_src_2 = models.Transfer_Net(n_class_fusion).to(device)
+        model_src_2.load_state_dict(ckpt_src["state_dict"], strict=False)
 
-        model_2 = models.Transfer_Net(n_class_fusion)
-        model_2.load_state_dict(ckpt_tgt["state_dict"], strict=False)
-        model_2 = model_2.to(device)
+        model_tgt_2 = models.Transfer_Net(n_class_fusion).to(device)
+        model_tgt_2.load_state_dict(ckpt_tgt["state_dict"], strict=False)
 
-        model = models.Transfer_Net(num_classes_union)
-        model = model.to(device)
+        # 建立最終 union 類別數的模型，並以 target checkpoint 作為初始值
+        model = models.Transfer_Net(num_classes_union).to(device)
+        state_tgt_full = ckpt_tgt["state_dict"]
+        dst_state = model.state_dict()
+        for name in dst_state.keys():
+            if name in state_tgt_full and state_tgt_full[name].shape == dst_state[name].shape:
+                dst_state[name] = state_tgt_full[name].clone()
+        model.load_state_dict(dst_state, strict=False)
 
-        state_1 = model_1.state_dict()
-        state_2 = model_2.state_dict()
-        fused_state = {}
-        for name in model.state_dict().keys():
-            if name in state_1 and name in state_2:
-                t1 = state_1[name].to(device)
-                t2 = state_2[name].to(device)
-                if t1.shape == t2.shape and t1.shape == model.state_dict()[name].shape:
-                    fused_state[name] = t1 * args.para_source + t2 * args.para_target
-                else:
-                    fused_state[name] = model.state_dict()[name].clone()
-            else:
-                fused_state[name] = model.state_dict()[name].clone()
-        model.load_state_dict(fused_state, strict=False)
+        # 使用 2025-style 統計對齊對 backbone 進行融合，其餘層維持線性加權
+        fuse_backbone_with_statistical_alignment(
+            model_src=model_src_2,
+            model_tgt=model_tgt_2,
+            model_out=model,
+            args=args,
+            device=device,
+        )
 
     elif args.backbone_init_mode in ("single_source", "single_target"):
         # single_source / single_target：只用單一模型初始化 backbone，
@@ -610,6 +853,19 @@ def main() -> None:
         print("[INFO] Initializing model from scratch (no pretrained checkpoint).")
         model = models.Transfer_Net(num_classes_union)
         model = model.to(device)
+
+    # 根據 classifier_init_mode 決定是否使用 source/target 的 2 類分類頭權重
+    # 依 union_names 初始化 3 類（或多類）分類頭
+    if args.classifier_init_mode == "from_ckpt":
+        init_classifier_from_src_tgt(
+            model=model,
+            ckpt_src=ckpt_src,
+            ckpt_tgt=ckpt_tgt,
+            union_names=union_names,
+            device=device,
+        )
+    else:
+        print("[INFO] classifier_init_mode = 'random'：保持隨機初始化的分類頭。")
 
     # 4. 構建 DataLoader、Optimizer、Scheduler、Loss
     train_loader = build_feature_dataloader(features, labels, args.batch_size)
